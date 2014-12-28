@@ -18,8 +18,7 @@ keypress(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.resume();
 
-async.series(
-[
+async.series([
   function initConnMan(next) {
     //NOTE: Network.js DBUS needs environment vars below
     //from: http://stackoverflow.com/questions/8556777/dbus-php-unable-to-launch-dbus-daemon-without-display-for-x11  
@@ -50,17 +49,13 @@ async.series(
   },
   function doJoinFavoriteNetwork(next) {
     debug("doJoinFavoriteNetwork");
-    wifi.joinFavorite(next);
+    wifi.joinFavorite(function(err) {
+      if(err) wifi.openHotspot();
+      else next();
+    });
   }
-//  function disableWiFi(next) {
-//    debug("disableWiFi");
-//    wifi.disable(next);
-//  }
-  //checkWiFi
-//]);
 ],function(err) {
   debug("start seq finished: ",err);
-  if(err) wifi.openHotspot();
 });
 
 // listen for the "keypress" event
