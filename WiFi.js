@@ -64,8 +64,10 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   _self = this;
   _hotspotSSID = hotspotSSID;
   _hotspotPassphrase = hotspotPassphrase;
+  // Retrieve WiFi technology
+  // https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/technology-api.txt
   _tech = _connMan.technologies.WiFi;
-  if(_tech === undefined) return callback(new Error("No WiFi available"));
+  if(_tech === undefined) return callback(new Error("No WiFi hardware available"));
   _available = true;
   _self.enable(callback);
 };
@@ -73,14 +75,14 @@ WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
   _self.setProperty('Powered', true, function(err) {
     //debug("WiFi setProperty 'Powered' true response: ",err);
-    setTimeout(callback, _timeoutWiFiEnable);
+    setTimeout(callback, _timeoutWiFiEnable); // ToDo: needed?
   });
 }
 WiFi.prototype.disable = function(callback) {
   // Note: Hostmodule tries this 3 times?
   _self.setProperty('Powered', false, function(err) {
     //debug("WiFi setProperty 'Powered' true response: ",err);
-    setTimeout(callback, _timeoutWiFiEnable);
+    setTimeout(callback, _timeoutWiFiEnable); // ToDo: needed?
   });
 }
 WiFi.prototype.setProperty = function(type, value, callback) {
@@ -106,6 +108,7 @@ WiFi.prototype.getNetworks = function(callback) {
       debug("  scan response: ",err);
       if(err) return setTimeout(nextRetry, _scanRetryTimeout, err);
       debug("listAccessPoints");
+      // ToDo research: Results will be signaled via the ServicesChanged signal from the manager interface.
       _tech.listAccessPoints(function(err, rawList) {
         //debug("listAccessPoints response: ",err,rawList);
         if(rawList.length === 0) {
