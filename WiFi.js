@@ -191,23 +191,40 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
 }
 WiFi.prototype.joinFavorite = function(callback) {
   debug("joinFavorite");
-  _self.getNetworks(function(err,list) {
-    if(err) {
-      if(callback) callback(err);
+  var favoriteAP;
+  async.series([
+    _self.closeHotspot,
+    function doFindFavoriteNetwork(next) {
+      debug('doFindFavoriteNetwork');
+      _self.getNetworks(function(err,list) {
+        if(err) return next(err);
+        debug("found networks: ",list);
+        for (var index in list) {
+          var ap = list[index];
+          if(ap.favorite) {
+            favoriteAP = ap;
+            return next();
+          }
+        } 
+        var err = new Error("No favorite network found");
+        next(err);
+      });
+    },
+    function doConnect(next) {
+      debug('doConnect');
+      //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
+      _self.join(ap.ssid,'',function(err) {
+        if(err) return next(err);
+        if(callback) callback(err);
+      });
       return;
     }
-    debug("found networks: ",list);
-    for (var index in list) {
-      var ap = list[index];
-      if(ap.favorite) {
-        //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
-        _self.join(ap.ssid,'',function(err) {
-          if(err) debug("[ERROR] joining network: ",err);
-          if(callback) callback(err);
-        });
-        break;
-      }
-    } 
+  ], function(err) {
+    debug('joinFavorite series finished');
+    if(err) {
+      debug("[ERROR] joining network: ",err);
+     if(callback) callback(err); 
+    }
   });
 }
 WiFi.prototype.disconnect = function(callback) {
