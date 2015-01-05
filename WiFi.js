@@ -112,7 +112,13 @@ WiFi.prototype.getNetworks = function(callback) {
     debug("attempt scan");
     _tech.scan(function(err) {
       debug("  scan response: ",err);
-      if(err) return setTimeout(nextRetry, _scanRetryTimeout, err);
+      console.dir(err);
+      if(err) {
+        if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
+          debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
+        }
+        return setTimeout(nextRetry, _scanRetryTimeout, err);
+      }
       debug("listAccessPoints");
       // ToDo research: Results will be signaled via the ServicesChanged signal from the manager interface.
       _tech.listAccessPoints(function(err, rawList) {
