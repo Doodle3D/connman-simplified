@@ -86,17 +86,23 @@ WiFi.prototype.disable = function(callback) {
   });
 }
 WiFi.prototype.setProperty = function(type, value, callback) {
-  _tech.getProperties(function(err, properties) {
-    //debug("getProperties response: ",err,properties);
-    if(err) return callback(err);
-    if(properties[type] === value) {
-      //debug("property '",type,"' already set to '",value,"'");
-      return callback();
+  _self.getProperty(type,function(err,currentValue) {
+    if(err) {
+      if(callback) callback(err);
+      return;
     }
+    if(value === currentValue) return callback();
     _tech.setProperty(type,value, function(err) {
       //debug("WiFi setProperty '",type,"' to '",value,"' response: ",err);
       callback(err);
     });
+  });
+}
+WiFi.prototype.getProperty = function(type, callback) {
+  _tech.getProperties(function(err, properties) {
+    //debug("getProperties response: ",err,properties);
+    if(err) return callback(err);
+    return callback(null,properties[type]);
   });
 }
 WiFi.prototype.getNetworks = function(callback) {
@@ -244,6 +250,14 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
     if (callback) callback(err);
   });
 }
+WiFi.prototype.isHotspot = function(callback) {
+  _self.getProperty('Tethering',function(err,value) {
+    debug("getProperty('Tethering' response: ",err,value);
+    debug("typeof value: ",typeof value);
+    return callback(err,value);
+  });
+}
+
 WiFi.prototype.getAvailable = function() {
   return _available;
 }
