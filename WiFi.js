@@ -1,7 +1,7 @@
 const debug = require('debug')('connman-tests:wifi');
 const async = require('async');
 
-var _timeoutWiFiEnable = 5000;
+var _timeoutWiFiEnable = 3000;
 var _timeoutTetherDisable = 4000;
 var _scanRetryTimeout = 5000;
 var _numScanRetries = 3;
@@ -75,7 +75,8 @@ WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
   _self.setProperty('Powered', true, function(err) {
     //debug("WiFi setProperty 'Powered' true response: ",err);
-    setTimeout(callback, _timeoutWiFiEnable); // ToDo: needed?
+    // delay, probably because of: https://01.org/jira/browse/CM-644
+    setTimeout(callback, _timeoutWiFiEnable);
   });
 }
 WiFi.prototype.disable = function(callback) {
@@ -268,6 +269,8 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
   _hotspotPassphrase = passphrase;
   debug("openHotspot: ",ssid,passphrase);
   
+  // changing ssid or passphrase works while already hotspot? 
+  // see: https://01.org/jira/browse/CM-668
   _tech.enableTethering(ssid, passphrase, function(err, res) {
     //debug("enableTethering response: ",err,res);
     if(err && err.message === 'net.connman.Error.PassphraseRequired') {
