@@ -50,7 +50,7 @@ async.series([
   function doJoinFavoriteNetwork(next) {
     debug("doJoinFavoriteNetwork");
     wifi.joinFavorite(function(err) {
-      if(err) wifi.openHotspot();
+      if(err) wifi.openHotspot(null,null,next);
       else next();
     });
   }

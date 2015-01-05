@@ -269,7 +269,11 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
   debug("openHotspot: ",ssid,passphrase);
   
   _tech.enableTethering(ssid, passphrase, function(err, res) {
-    debug("enableTethering response: ",err,res);
+    //debug("enableTethering response: ",err,res);
+    if(err && err.message === 'net.connman.Error.PassphraseRequired') {
+      err = new Error("Invalid password (passphrase must be at least 8 characters) (connman: "+err+")");
+    }
+    if(err) debug("[ERROR] openHotspot failed: ",err);
     if (callback) callback(err);
   });
 }
