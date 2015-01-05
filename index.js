@@ -12,7 +12,7 @@ var wifi;
 var wifiNetworks;
 
 var hotspotSSID = "connmanTest";
-var hotspotPassphrase = "test";
+var hotspotPassphrase = "ultimaker";
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
