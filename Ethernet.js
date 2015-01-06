@@ -33,7 +33,7 @@ Ethernet.prototype.init = function(callback) {
           callback(err,props);
         });
         _service.on('PropertyChanged', function(name, value) {
-          debug('wired service \''+serviceName+'\' properties update: ',name,value);
+          debug(name,'changed:',value);
         });
       });
     });

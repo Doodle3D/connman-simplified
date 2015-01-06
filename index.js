@@ -52,11 +52,18 @@ async.series([
         if(err) wifi.openHotspot(null,null,next);
         else next();
       });
-      // ToDo: open hotspot on connection issues
     });
   }
 ],function(err) {
   debug("start seq finished: ",err || '');
+  
+  // ToDo: open hotspot on connection issues
+  wifi.on('State',function(value) {
+    debug("WiFi State change: ",value);
+    if(value === WiFi.WIFI_STATES.FAILURE) {
+      wifi.openHotspot();
+    }
+  }); 
 });
 
 // listen for the "keypress" event
@@ -83,6 +90,9 @@ process.stdin.on('keypress', function (ch, key) {
     case '5':
       wifi.join("wrongnetwork",'wrongpassword');
       break;
+    case '6':
+      wifi.join("Doodle3D-wisp");
+      break;
     case 'f': 
       wifi.joinFavorite();
       break;
@@ -99,7 +109,8 @@ process.stdin.on('keypress', function (ch, key) {
       break;
     case 'g':
       wifi.getNetworks(function(err,list) {
-        debug("found networks: ",err,list);
+        //debug("found networks: ",err,list);
+        if(err) debug("[ERROR] get networks: ",err);
       });
       break;
       
