@@ -224,7 +224,7 @@ WiFi.prototype.joinFavorite = function(callback) {
     function doConnect(next) {
       debug('doConnect');
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
-      _self.join(ap.ssid,'',function(err) {
+      _self.join(favoriteAP.ssid,'',function(err) {
         if(err) return next(err);
         if(callback) callback(err);
       });
