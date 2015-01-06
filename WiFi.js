@@ -12,6 +12,7 @@ var _connMan;
 var _tech;
 var _service;
 var _connection;
+var _agent;
 var _available = false;
 var _networks = [];
 var _self;
@@ -150,7 +151,6 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     return;
   }
   passphrase = passphrase || '';
-  var agent;
   // ToDo: update wifiSSID & wifiState
   async.series([
     _self.closeHotspot,
@@ -192,7 +192,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       _connection.connect(function(err, newAgent) {
         debug("connect response: ",err || ''/*,newAgent*/);
         if (err) return next(err);
-        agent = newAgent;
+        _agent = newAgent;
         next();
       });
     },
@@ -224,6 +224,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
             debug('[FAILURE] ',err);
             _connection.removeListener('PropertyChanged',onChange);
             next(err);
+            // ToDo include error... (sometimes there is a Error property change, with a value like 'invalid-key')
             //_self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
             break;
         }
@@ -231,19 +232,19 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       _connection.on('PropertyChanged',onChange);  
       // keep listening 
       _connection.on('PropertyChanged', onConnectionPropertyChanged);
-      agent.on('Release', function() {
+      _agent.on('Release', function() {
         debug("agent: Release: ",arguments);
       });
-      agent.on('ReportError', function(service, error) {
+      _agent.on('ReportError', function(service, error) {
         debug("agent: ReportError: ",arguments);
       });
-      agent.on('RequestBrowser', function(service, url) {
+      _agent.on('RequestBrowser', function(service, url) {
         debug("agent: RequestBrowser: ",arguments);
       });
-      agent.on('RequestInput', function(service, url, callback) {
+      _agent.on('RequestInput', function(service, url, callback) {
         debug("agent: RequestInput: ",arguments);
       });
-      agent.on('Cancel', function() {
+      _agent.on('Cancel', function() {
         debug("agent: Cancel: ",arguments);
       });
     }
@@ -315,6 +316,8 @@ WiFi.prototype.disconnect = function(callback) {
         }
         // ToDo update wifiState?
         debug('disconnected from ' + serviceName + '...');
+        if(_connection) _connection.removeListener('PropertyChanged', onConnectionPropertyChanged);
+        if(_agent) _agent.removeAllListeners();
         if(callback) callback();
       });
     });
