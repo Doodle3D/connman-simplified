@@ -1,5 +1,6 @@
 const debug = require('debug')('connman-tests:wifi');
 const async = require('async');
+const fs = require('fs');
 
 var _timeoutWiFiEnable = 3000;
 var _timeoutTetherDisable = 4000;
