@@ -94,21 +94,19 @@ WiFi.prototype.enable = function(callback) {
   _self.setProperty('Powered', true, function(err) {
     //debug("WiFi setProperty 'Powered' true response: ",err);
     // delay, probably because of: https://01.org/jira/browse/CM-644
-    setTimeout(callback, _timeoutWiFiEnable);
+    setTimeout(callback, _timeoutWiFiEnable, err);
   });
-}
+};
 WiFi.prototype.disable = function(callback) {
-  // Note: Hostmodule tries this 3 times?
   _self.setProperty('Powered', false, function(err) {
-    //debug("WiFi setProperty 'Powered' true response: ",err);
-    setTimeout(callback, _timeoutWiFiEnable); // ToDo: needed?
+    setTimeout(callback, _timeoutWiFiEnable, err); // ToDo: needed?
   });
-}
+};
 WiFi.prototype.setProperty = function(type, value, callback) {
   _tech.setProperty(type, value, function(err) {
     if(callback) callback(err);
   });
-}
+};
 WiFi.prototype.getProperty = function(type, callback) {
   _self.getProperties(function(err, properties) {
     if(err) return callback(err);
@@ -125,14 +123,13 @@ WiFi.prototype.getNetworks = function(callback) {
     debug("attempt scan");
     _tech.scan(function(err) {
       debug("  scan response: ",err);
-      console.dir(err);
       if(err) {
         if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
           debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
         }
         return setTimeout(nextRetry, _scanRetryTimeout, err);
       }
-      debug("listAccessPoints");
+      //debug("listAccessPoints");
       // ToDo research: Results will be signaled via the ServicesChanged signal from the manager interface.
       _tech.listAccessPoints(function(err, rawList) {
         //debug("listAccessPoints response: ",err,rawList);
@@ -144,7 +141,7 @@ WiFi.prototype.getNetworks = function(callback) {
       });
     });
   },callback);
-}
+};
 WiFi.prototype.join = function(ssid,passphrase,callback) {
   debug("join: ",ssid,passphrase);
   if(ssid === undefined) {
@@ -208,7 +205,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   ],function(err,results) {
     debug('join finished: ',err,results);
   });
-}
+};
 WiFi.prototype.joinFavorite = function(callback) {
   debug("joinFavorite");
   var favoriteAP;
@@ -246,7 +243,7 @@ WiFi.prototype.joinFavorite = function(callback) {
      if(callback) callback(err); 
     }
   });
-}
+};
 WiFi.prototype.disconnect = function(callback) {
   debug("disconnect");
   _tech.getServices(function(err, services) {
@@ -276,7 +273,7 @@ WiFi.prototype.disconnect = function(callback) {
       });
     });
   });
-}
+};
 WiFi.prototype.closeHotspot = function(callback) {
   debug("closeHotspot");
   _tech.disableTethering(function(err, res) {
@@ -296,7 +293,7 @@ WiFi.prototype.closeHotspot = function(callback) {
       if (callback) callback();
     },_timeoutTetherDisable);
   });
-}
+};
 WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
   ssid               = ssid       || _hotspotSSID;
   passphrase         = passphrase || _hotspotPassphrase;
@@ -314,18 +311,18 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
     if(err) debug("[ERROR] openHotspot failed: ",err);
     if (callback) callback(err);
   });
-}
+};
 WiFi.prototype.isHotspot = function(callback) {
   _self.getProperty('Tethering',function(err,value) {
     debug("getProperty('Tethering' response: ",err,value);
     debug("typeof value: ",typeof value);
     return callback(err,value);
   });
-}
+};
 
 WiFi.prototype.getAvailable = function() {
   return _available;
-}
+};
 function onWiFiPropertyChanged(name, value) {
   debug(name+" changed: ",value);
           
@@ -349,7 +346,7 @@ function onWiFiPropertyChanged(name, value) {
           break; 
         case WIFI_STATES.FAILURE:
           debug('[FAILURE] WiFi connection failure, open hotspot');
-          _self.openHotspot();
+          _self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
           break;
       }
       break;
@@ -383,7 +380,7 @@ function getService(ssid,callback) {
       return;
     }
     if (!service) {
-      if(callback) callback(new Error("Network "+ssid+" not found"))
+      if(callback) callback(new Error("Network '"+ssid+"' not found"))
       return;
     }
     //debug("service: ",service);
@@ -417,7 +414,7 @@ function storePassphrase (ssid, passphrase, callback) {
       });
     });
   });
-};
+}
 function stringToHex(tmp) {
   function d2h(d) {
     return d.toString(16);
@@ -427,7 +424,7 @@ function stringToHex(tmp) {
     str += d2h(tmp.charCodeAt(i)) + '';
   }
   return str;
-};
+}
 function hexToString(tmp) {
   function h2d(h) {
     return parseInt(h, 16);
