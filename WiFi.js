@@ -314,7 +314,7 @@ function onWiFiPropertyChanged(name, value) {
           break; 
         case WIFI_STATES.FAILURE:
           debug('[FAILURE] WiFi connection failure, open hotspot');
-          openHotspot();
+          _self.openHotspot();
           break;
       }
       break;
