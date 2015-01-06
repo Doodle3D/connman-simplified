@@ -27,7 +27,7 @@ async.series([
     connMan = new ConnMan();
     debug('initializing connman...');
     connMan.init(function(err) {
-      debug('connMan init response: ',err);
+      debug('connMan init response: ',err || '');
       if (err) {
         debug('[ERROR] connman init');
         debug(err);
@@ -52,10 +52,11 @@ async.series([
         if(err) wifi.openHotspot(null,null,next);
         else next();
       });
+      // ToDo: open hotspot on connection issues
     });
   }
 ],function(err) {
-  debug("start seq finished: ",err);
+  debug("start seq finished: ",err || '');
 });
 
 // listen for the "keypress" event
@@ -71,12 +72,15 @@ process.stdin.on('keypress', function (ch, key) {
       else wifi.join("Vechtclub XL F1.19",'groentegorilla');
       break;
     case '2':
-      wifi.join("hss");
-      break;
-    case '3':
       wifi.join("Vechtclub XL F1.19",'wrongpassword');
       break;
+    case '3':
+      wifi.join("hss","wrongpassword");
+      break;
     case '4':
+      wifi.join("hss");
+      break;
+    case '5':
       wifi.join("wrongnetwork",'wrongpassword');
       break;
     case 'f': 
