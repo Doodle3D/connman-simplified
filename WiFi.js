@@ -216,11 +216,13 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   //              }
   //            }
   //          });
+            _connection.removeListener('PropertyChanged',onChange);
             next();
             break; 
           case WIFI_STATES.FAILURE:
             var err = new Error("Joining network failed (wrong password?)");
             debug('[FAILURE] ',err);
+            _connection.removeListener('PropertyChanged',onChange);
             next(err);
             //_self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
             break;
