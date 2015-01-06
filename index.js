@@ -60,19 +60,32 @@ async.series([
 
 // listen for the "keypress" event
 process.stdin.on('keypress', function (ch, key) {
-  //console.log('got "keypress"', key);
-  debug(key.name+":");
-  switch(key.name) {
+  //debug('keypress: ', ch, key);
+  if(key) keyName = key.name;
+  else keyName = ch;
+  debug(keyName+" > ");
+  switch(keyName) {
     case 'c':
-      if(key.ctrl) process.exit(1);
-      //else wifi.join("hss");
+    case '1':
+      if(keyName === 'c' && key.ctrl) process.exit(1);
       else wifi.join("Vechtclub XL F1.19",'groentegorilla');
+      break;
+    case '2':
+      wifi.join("hss");
+      break;
+    case '3':
+      wifi.join("Vechtclub XL F1.19",'wrongpassword');
+      break;
+    case '4':
+      wifi.join("wrongnetwork",'wrongpassword');
       break;
     case 'f': 
       wifi.joinFavorite();
       break;
     case 'd':
-      wifi.disconnect();
+      wifi.disconnect(function(err) {
+        if(err) debug("[Error] disconnect error: ",err);
+      });
       break;
     case 'o':
       wifi.openHotspot();
