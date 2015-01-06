@@ -6,6 +6,8 @@ var _timeoutWiFiEnable = 3000;
 var _timeoutTetherDisable = 4000;
 var _scanRetryTimeout = 5000;
 var _numScanRetries = 3;
+var _getServiceRetryTimeout = _scanRetryTimeout;
+var _numGetServiceRetries = _numScanRetries;
 var _connMan;
 var _tech;
 var _service;
@@ -145,10 +147,17 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   async.series([
     _self.closeHotspot,
     function doGetService(next) { 
-      getService(ssid,function(err,service) {
-        _service = service;
-        next(err);
-      });
+      debug("doGetService: ",ssid);
+      //ToDO retries
+      async.retry(_numGetServiceRetries, function(nextRetry) {
+        debug("(re)attempt getService");
+        getService(ssid,function(err,service) {
+          //debug("getService response: ",err,service);
+          if(err) return setTimeout(nextRetry, _getServiceRetryTimeout, err);
+          _service = service;
+          next();
+        });
+      },next);
     },
     function doHandleSecurity(next) {
       if (_service.Security.indexOf('none') > -1) {
