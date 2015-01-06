@@ -1,6 +1,8 @@
-const debug = require('debug')('connman-tests:wifi');
-const async = require('async');
-const fs = require('fs');
+const debug       = require('debug')('connman-tests:wifi');
+const async       = require('async');
+const fs          = require('fs');
+var util          = require("util");
+var EventEmitter  = require("events").EventEmitter;
 
 var _timeoutWiFiEnable = 3000;
 var _timeoutTetherDisable = 4000;
@@ -15,6 +17,7 @@ var _connection;
 var _agent;
 var _available = false;
 var _networks = [];
+var _properties = {}; // object containing all the connection properties
 var _self;
 
 /** https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/service-api.txt
@@ -56,12 +59,16 @@ const ETHERNET_STATES = {
 };
 
 module.exports = WiFi;
+module.exports.WIFI_STATES = WIFI_STATES;
+
 var _hotspotSSID;
 var _hotspotPassphrase;
 
 function WiFi(connMan) {
   _connMan = connMan;
 }
+
+util.inherits(WiFi, EventEmitter);
 
 WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   debug("init: ",hotspotSSID,hotspotPassphrase);
@@ -90,6 +97,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
     });
   });
   _connMan.on('PropertyChanged',onPropertyChanged);
+  // ToDo: find current connect and start listening
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -139,6 +147,7 @@ WiFi.prototype.getNetworks = function(callback) {
           return setTimeout(nextRetry, _scanRetryTimeout, new Error('No access points found'));
         }
         _networks = parseNetworks(rawList);
+        logNetworks();
         callback(null, _networks);
       });
     });
@@ -190,7 +199,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     },
     function doConnect(next) {
       _connection.connect(function(err, newAgent) {
-        debug("connect response: ",err || ''/*,newAgent*/);
+        //debug("connect response: ",err || ''/*,newAgent*/);
         if (err) return next(err);
         _agent = newAgent;
         next();
@@ -199,12 +208,16 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     function doListen(next) {
       // get current properties
       _connection.getProperties(function(err, props) {
-        debug("current connection properties: ",props);
-        // ToDo update wifi status
+        //debug("current connection properties: ",props);
+        _properties = props;
+        for(var type in props) {
+          _self.emit(type,props[type]);
+        }
+        logStatus();
       });
       function onChange(type, value) {
         if(type !== 'State') return;
-        debug("connection State: ",value);
+        //debug("connection State: ",value);
         switch(value) {
           // when wifi ready and online
           case WIFI_STATES.READY:
@@ -262,7 +275,6 @@ WiFi.prototype.joinFavorite = function(callback) {
       debug('doFindFavoriteNetwork');
       _self.getNetworks(function(err,list) {
         if(err) return next(err);
-        debug("found networks: ",list);
         for (var index in list) {
           var ap = list[index];
           if(ap.favorite) {
@@ -380,6 +392,16 @@ function onPropertyChanged(type, value) {
 // Connection / service property changes
 function onConnectionPropertyChanged(type, value) {
   debug("connection: "+type+" changed: ",value);
+  _properties[type] = value;
+  _self.emit(type,value);
+  switch(type) {
+    case 'State':
+    case 'Name':
+    case 'Security':
+    case 'IPv4':
+      logStatus();
+      break;
+  }
 }
 function parseNetworks(rawList) {
   var list = [];
@@ -463,4 +485,18 @@ function hexToString(tmp) {
     str += String.fromCharCode(h2d(arr[i]));
   }
   return str;
-};
+}
+function logStatus() {
+  if(!_properties.State) return;
+  var address = (_properties.IPv4 && _properties.IPv4.Address)? _properties.IPv4.Address : '';
+  debug('status: ',_properties.State,"'"+_properties.Name+"'",_properties.Security,address);
+}
+function logNetworks() {
+  debug('Networks: ');
+  for(index in _networks) {
+    var network = _networks[index];
+    var networkLine = network.favorite? '*' : ' ';
+    networkLine += "'"+network.ssid+"'";
+    debug(networkLine,network.security,network.state);
+  }
+}
