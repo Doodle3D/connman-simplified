@@ -149,6 +149,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     return;
   }
   passphrase = passphrase || '';
+  var agent;
   // ToDo: update wifiSSID & wifiState
   async.series([
     _self.closeHotspot,
@@ -188,7 +189,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     },
     function doConnect(next) {
       _connection.connect(function(err, newAgent) {
-        //debug("connect response: ",err,newAgent);
+        debug("connect response: ",err || ''/*,newAgent*/);
         if (err) return next(err);
         agent = newAgent;
         next();
@@ -198,6 +199,20 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       _connection.getProperties(function(err, props) {
         debug("connection properties: ",props);
         // ToDo update wifi...
+      agent.on('Release', function() {
+        debug("agent: Release: ",arguments);
+      });
+      agent.on('ReportError', function(service, error) {
+        debug("agent: ReportError: ",arguments);
+      });
+      agent.on('RequestBrowser', function(service, url) {
+        debug("agent: RequestBrowser: ",arguments);
+      });
+      agent.on('RequestInput', function(service, url, callback) {
+        debug("agent: RequestInput: ",arguments);
+      });
+      agent.on('Cancel', function() {
+        debug("agent: Cancel: ",arguments);
       });
       _connection.on('PropertyChanged', onWiFiPropertyChanged);
       next();
