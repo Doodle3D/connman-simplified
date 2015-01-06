@@ -122,8 +122,8 @@ WiFi.prototype.getNetworks = function(callback) {
   async.retry(_numScanRetries, function(nextRetry) {
     debug("attempt scan");
     _tech.scan(function(err) {
-      debug("  scan response: ",err);
       if(err) {
+        debug("  scan response: ",err);
         if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
           debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
         }
@@ -196,9 +196,38 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       });
     },
     function doListen(next) {
+      // get current properties
       _connection.getProperties(function(err, props) {
-        debug("connection properties: ",props);
-        // ToDo update wifi...
+        debug("current connection properties: ",props);
+        // ToDo update wifi status
+      });
+      function onChange(type, value) {
+        if(type !== 'State') return;
+        debug("connection State: ",value);
+        switch(value) {
+          // when wifi ready and online
+          case WIFI_STATES.READY:
+  //          self.connman.getOnlineService(function(err, _service) {
+  //            if (_service.Type === 'ethernet' && _service.State === 'online') {
+  //              if (self.wifiState !== WIFI_STATES.ONLINE) {
+  //                debug('[NOTE] online through ethernet');
+  //                self._updateEthernetState(ETHERNET_STATES.ONLINE);
+  //              }
+  //            }
+  //          });
+            next();
+            break; 
+          case WIFI_STATES.FAILURE:
+            var err = new Error("Joining network failed (wrong password?)");
+            debug('[FAILURE] ',err);
+            next(err);
+            //_self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
+            break;
+        }
+      }
+      _connection.on('PropertyChanged',onChange);  
+      // keep listening 
+      _connection.on('PropertyChanged', onConnectionPropertyChanged);
       agent.on('Release', function() {
         debug("agent: Release: ",arguments);
       });
@@ -214,11 +243,10 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       agent.on('Cancel', function() {
         debug("agent: Cancel: ",arguments);
       });
-      _connection.on('PropertyChanged', onWiFiPropertyChanged);
-      next();
     }
   ],function(err,results) {
-    debug('join finished: ',err,results);
+    debug('join finished: ',err || '',results);
+    callback(err);
   });
 };
 WiFi.prototype.joinFavorite = function(callback) {
@@ -246,10 +274,10 @@ WiFi.prototype.joinFavorite = function(callback) {
       debug('doConnect');
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
       _self.join(favoriteAP.ssid,'',function(err) {
+        debug('join response: ',err || '');
         if(err) return next(err);
         if(callback) callback(err);
       });
-      return;
     }
   ], function(err) {
     debug('joinFavorite series finished');
@@ -338,34 +366,10 @@ WiFi.prototype.isHotspot = function(callback) {
 WiFi.prototype.getAvailable = function() {
   return _available;
 };
-function onWiFiPropertyChanged(name, value) {
-  debug(name+" changed: ",value);
-          
-  switch(name) {
-    case 'Strength': 
-      // ToDo update wifiStrength
-      break;
-    case 'State':
-      // ToDo update wifiState
-      switch(value) {
-        // when wifi ready and online through ethernet
-        case WIFI_STATES.READY:
-//          self.connman.getOnlineService(function(err, _service) {
-//            if (_service.Type === 'ethernet' && _service.State === 'online') {
-//              if (self.wifiState !== WIFI_STATES.ONLINE) {
-//                debug('[NOTE] online through ethernet');
-//                self._updateEthernetState(ETHERNET_STATES.ONLINE);
-//              }
-//            }
-//          });
-          break; 
-        case WIFI_STATES.FAILURE:
-          debug('[FAILURE] WiFi connection failure, open hotspot');
-          _self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
-          break;
-      }
-      break;
-  }
+
+// Connection / service property changes
+function onConnectionPropertyChanged(name, value) {
+  debug("connection: "+name+" changed: ",value);
 }
 function parseNetworks(rawList) {
   var list = [];
