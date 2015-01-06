@@ -240,16 +240,32 @@ WiFi.prototype.joinFavorite = function(callback) {
 }
 WiFi.prototype.disconnect = function(callback) {
   debug("disconnect");
-  if(!_connection) return callback();
-  _connection.disconnect(function(err) {
-    //debug("disconnect response: ",err);
-    if (err) {
-      if (callback) callback(err);
+  _tech.getServices(function(err, services) {
+    var readyServiceName;
+    for(var serviceName in services){
+      var service = services[serviceName];
+      if(service.State === 'ready') {
+        readyServiceName = serviceName;
+        break;
+      }
+    }
+    if(!readyServiceName) {
+      if(callback) callback(new Error("Not connected to any wifi services"));
       return;
     }
-    // ToDo update wifiState?
-    debug('disconnected from ' + _service.Name + '...');
-    if(callback) callback();
+    //debug("readyServiceName: ",serviceName);
+    _connMan.getConnection(readyServiceName, function(err, connection) {
+      connection.disconnect(function(err) {
+        //debug("disconnect response: ",err);
+        if (err) {
+          if (callback) callback(err);
+          return;
+        }
+        // ToDo update wifiState?
+        debug('disconnected from ' + serviceName + '...');
+        if(callback) callback();
+      });
+    });
   });
 }
 WiFi.prototype.closeHotspot = function(callback) {
