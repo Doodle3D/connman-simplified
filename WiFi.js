@@ -90,16 +90,8 @@ WiFi.prototype.disable = function(callback) {
   });
 }
 WiFi.prototype.setProperty = function(type, value, callback) {
-  _self.getProperty(type,function(err,currentValue) {
-    if(err) {
-      if(callback) callback(err);
-      return;
-    }
-    if(value === currentValue) return callback();
-    _tech.setProperty(type,value, function(err) {
-      //debug("WiFi setProperty '",type,"' to '",value,"' response: ",err);
-      callback(err);
-    });
+  _tech.setProperty(type, value, function(err) {
+    if(callback) callback(err);
   });
 }
 WiFi.prototype.getProperty = function(type, callback) {
