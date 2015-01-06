@@ -246,7 +246,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     }
   ],function(err,results) {
     debug('join finished: ',err || '',results);
-    callback(err);
+    if(callback) callback(err);
   });
 };
 WiFi.prototype.joinFavorite = function(callback) {
