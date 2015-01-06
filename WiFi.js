@@ -70,9 +70,24 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   // Retrieve WiFi technology
   // https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/technology-api.txt
   _tech = _connMan.technologies.WiFi;
-  if(_tech === undefined) return callback(new Error("No WiFi hardware available"));
+  if(_tech === undefined) {
+    if(callback) callback(new Error("No WiFi hardware available"));
+    return;
+  }
   _available = true;
-  _self.enable(callback);
+  _self.getProperties(function(err, properties) {
+    if(err) {
+      if(callback) callback(err); 
+      return;
+    }
+    if(properties.Powered) { // already powered? 
+      if(callback) callback(null,properties);
+      return;
+    }
+    _self.enable(function(err) {
+      if(callback) callback(err,properties);
+    });
+  });
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -95,12 +110,14 @@ WiFi.prototype.setProperty = function(type, value, callback) {
   });
 }
 WiFi.prototype.getProperty = function(type, callback) {
-  _tech.getProperties(function(err, properties) {
-    //debug("getProperties response: ",err,properties);
+  _self.getProperties(function(err, properties) {
     if(err) return callback(err);
     return callback(null,properties[type]);
   });
-}
+};
+WiFi.prototype.getProperties = function(callback) {
+  _tech.getProperties(callback);
+};
 WiFi.prototype.getNetworks = function(callback) {
   debug("getNetworks");
   // ToDo: check if tethering, if so we can't scan

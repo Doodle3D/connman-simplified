@@ -45,13 +45,13 @@ async.series([
   function initWiFi(next) {
     debug("initWiFi");
     wifi = new WiFi(connMan); 
-    wifi.init(hotspotSSID,hotspotPassphrase,next);
-  },
-  function doJoinFavoriteNetwork(next) {
-    debug("doJoinFavoriteNetwork");
-    wifi.joinFavorite(function(err) {
-      if(err) wifi.openHotspot(null,null,next);
-      else next();
+    wifi.init(hotspotSSID,hotspotPassphrase,function(err,properties) {
+      debug("wifi Connected: ",properties.Connected);
+      if(properties.Connected) return next(); // already connected? 
+      wifi.joinFavorite(function(err) {
+        if(err) wifi.openHotspot(null,null,next);
+        else next();
+      });
     });
   }
 ],function(err) {
