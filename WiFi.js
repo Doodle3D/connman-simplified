@@ -88,6 +88,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       if(callback) callback(err,properties);
     });
   });
+  _connMan.on('PropertyChanged',onPropertyChanged);
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -367,9 +368,13 @@ WiFi.prototype.getAvailable = function() {
   return _available;
 };
 
+// connman / manager / ... property changed? 
+function onPropertyChanged(type, value) {
+  debug("connman: "+type+" changed: ",value);
+}
 // Connection / service property changes
-function onConnectionPropertyChanged(name, value) {
-  debug("connection: "+name+" changed: ",value);
+function onConnectionPropertyChanged(type, value) {
+  debug("connection: "+type+" changed: ",value);
 }
 function parseNetworks(rawList) {
   var list = [];
