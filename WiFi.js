@@ -98,12 +98,20 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       if(callback) callback(err,properties);
     });
   });
-  // Listen for Manager API property changes
+  // Listen to Manager API for property changes
   _connMan.on('PropertyChanged',onManagerPropertyChanged);
-  // Listen for Technology (WiFi) API property changes
+  // Listen to Technology (WiFi) API for property changes
   _tech.on('PropertyChanged',onTechPropertyChanged);
   // ToDo: find current connect and start listening
-  // ToDo: Listen for ServicesChanged on _connman (Manager)
+  
+  // Get current services (networks) 
+  _tech.getServices(function(err,services) {
+    //debug("_connMan.getServices respone: ",arguments);
+    if(err) return debug("[Warning] Coulnd't get current services: ",err);
+    setNetworks(parseServices(services));
+  });
+  // Listen to Manager API for Services changes
+  _connMan.on('ServicesChanged',onServicesChanged);
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -146,7 +154,7 @@ WiFi.prototype.getNetworks = function(callback) {
   // ToDo: check if tethering, if so we can't scan
   async.retry(_numScanRetries, function(nextRetry) {
     debug("attempt scan");
-    _tech.scan(function(err) {
+    _tech.scan(function(err) { // ToDo: create separate scan function
       if(err) {
         debug("  scan response: ",err);
         if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
@@ -155,12 +163,12 @@ WiFi.prototype.getNetworks = function(callback) {
         return setTimeout(nextRetry, _scanRetryTimeout, err);
       }
       //debug("listAccessPoints");
-      _tech.listAccessPoints(function(err, rawList) {
+      _tech.listAccessPoints(function(err, rawList) { // ToDo: use getServices? 
         //debug("listAccessPoints response: ",err,rawList);
         if(rawList.length === 0) {
           return setTimeout(nextRetry, _scanRetryTimeout, new Error('No access points found'));
         }
-        _networks = parseNetworks(rawList);
+        _networks = parseServices(rawList);
         logNetworks();
         callback(null, _networks);
       });
@@ -387,13 +395,31 @@ WiFi.prototype.getAvailable = function() {
 function onManagerPropertyChanged(type, value) {
   debug("manager property changed: "+type+": ",value);
 }
+function onServicesChanged(changes,removed) {
+  debug("onServicesChanged: ");
+  // update networks list
+  // use the new order from changes 
+  for(var key in changes) {
+    if(Object.keys(changes[key]).length === 0) { // empty?
+      changes[key] = _networks[key]; // fill with current properties
+    } else {
+      changes[key] = parseService(changes[key]); // parse
+    }
+  }
+  // remove undefined services (should only be the ethernet service)
+  for(key in changes) {
+    if(changes[key] === undefined) delete changes[key];
+  }
+  setNetworks(changes);
+  // Future: emit per removed network a networkRemoved event
+  // Future: emit per added network a networkAdded event
+}
 function onTechPropertyChanged(type, value) {
   debug("tech property changed: "+type+": ",value);
   _techProperties[type] = value;
   _self.emit(type,value);
   logStatus();
 }
-
 // Connection / service property changes
 function onConnectionPropertyChanged(type, value) {
   debug("service property changed: "+type+": ",value);
@@ -409,24 +435,36 @@ function onConnectionPropertyChanged(type, value) {
   }
 }
 
-function parseNetworks(rawList) {
-  var list = [];
-  for (var index in rawList) {
-    var rawAP = rawList[index];
-    if(rawAP.State === 'failure') continue;
-    var ap = {
-      ssid: String((rawAP.Name ? rawAP.Name : '*hidden*')),
-      // ssidHex: serviceNameArr[2], //--arr index 2 is ssidhex
-      state: rawAP.State,
-      strength: rawAP.Strength,
-      security: rawAP.Security,
-      favorite: rawAP.Favorite,
-      immutable: rawAP.Immutable,
-      autoConnect: rawAP.AutoConnect
-    };
-    list.push(ap);
+function parseServices(raw) {
+  var parsed = {};
+  for (var key in raw) {
+    var service = parseService(raw[key]);
+    if(parseService.state === 'failure') continue;
+    parsed[key] = service;
   }
-  return list;
+  return parsed;
+}
+function parseService(rawService) {
+  var service = {};
+  
+  var include = ["State","Strength","Security","Favorite","Immutable","AutoConnect"];
+  
+  for (var propType in rawService) {
+    if(include.indexOf(propType) === -1) continue;
+    service[propType.toLowerCase()] = rawService[propType];
+  }
+  service.ssid = String(rawService.Name ? rawService.Name : '*hidden*');
+  return service;
+}
+function setNetworks(networks) {
+  _networks = changes;
+  logNetworks();
+  // emit networks list as array
+  var networksArr = [];
+  for (var key in _networks) {
+      networksArr.push(_networks[key]);
+  }
+  _self.emit('networks',networksArr);
 }
 function getConnection(callback) { // ToDo: much overlap with connman.getOnlineService
   _tech.getServices(function(err, services) {
