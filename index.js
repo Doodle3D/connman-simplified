@@ -108,6 +108,9 @@ process.stdin.on('keypress', function (ch, key) {
     case 'x':
       wifi.closeHotspot();
       break;
+    case 's':
+      wifi.scan();
+      break;
     case 'g':
       wifi.getNetworks(function(err,list) {
         //debug("found networks: ",err,list);

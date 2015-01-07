@@ -153,27 +153,33 @@ WiFi.prototype.getNetworks = function(callback) {
   debug("getNetworks");
   // ToDo: check if tethering, if so we can't scan
   async.retry(_numScanRetries, function(nextRetry) {
-    debug("attempt scan");
-    _tech.scan(function(err) { // ToDo: create separate scan function
-      if(err) {
-        debug("  scan response: ",err);
-        if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
-          debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
-        }
-        return setTimeout(nextRetry, _scanRetryTimeout, err);
-      }
+    _self.scan(function(err) {
+      if(err) return setTimeout(nextRetry, _scanRetryTimeout, err);
       //debug("listAccessPoints");
       _tech.listAccessPoints(function(err, rawList) { // ToDo: use getServices? 
         //debug("listAccessPoints response: ",err,rawList);
         if(rawList.length === 0) {
           return setTimeout(nextRetry, _scanRetryTimeout, new Error('No access points found'));
         }
-        _networks = parseServices(rawList);
-        logNetworks();
+        debug("networks found by: getNetworks ");
+        setNetworks(parseServices(rawList));
         callback(null, _networks);
       });
     });
   },callback);
+};
+WiFi.prototype.scan = function(callback) {
+  debug("scan");
+  // ToDo: check if tethering, if so we can't scan
+  _tech.scan(function(err) { // ToDo: create separate scan function
+    if(err) {
+      debug("[Error] scanning: ",err);
+      if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
+        debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
+      }
+    }
+    if(callback) callback(err);
+  });
 };
 WiFi.prototype.join = function(ssid,passphrase,callback) {
   debug("join: ",ssid,passphrase);
