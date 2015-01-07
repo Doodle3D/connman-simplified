@@ -155,14 +155,13 @@ WiFi.prototype.getNetworks = function(callback) {
   async.retry(_numScanRetries, function(nextRetry) {
     _self.scan(function(err) {
       if(err) return setTimeout(nextRetry, _scanRetryTimeout, err);
-      //debug("listAccessPoints");
-      _tech.listAccessPoints(function(err, rawList) { // ToDo: use getServices? 
-        //debug("listAccessPoints response: ",err,rawList);
-        if(rawList.length === 0) {
-          return setTimeout(nextRetry, _scanRetryTimeout, new Error('No access points found'));
+      _tech.getServices(function(err,services) {
+        //debug("listAccessPoints response: ",err,services);
+        if(Object.keys(services).length === 0) {
+          return setTimeout(nextRetry, _scanRetryTimeout, new Error('No WiFi networks found'));
         }
         debug("networks found by: getNetworks ");
-        setNetworks(parseServices(rawList));
+        setNetworks(parseServices(services));
         callback(null, _networks);
       });
     });
