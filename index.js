@@ -47,6 +47,7 @@ async.series([
     wifi = new WiFi(connMan); 
     wifi.init(hotspotSSID,hotspotPassphrase,function(err,properties) {
       debug("wifi Connected: ",properties.Connected);
+      debug("properties: ",properties);
       if(properties.Connected) return next(); // already connected? 
       wifi.joinFavorite(function(err) {
         if(err) wifi.openHotspot(null,null,next);
@@ -113,6 +114,10 @@ process.stdin.on('keypress', function (ch, key) {
         if(err) debug("[ERROR] get networks: ",err);
       });
       break;
-      
+    case 'i':
+      wifi.getConnectionProperties(function(err,properties) {
+        if(err) debug("[ERROR] get connection properties: ",err);
+      });
+      break;
   }
 });

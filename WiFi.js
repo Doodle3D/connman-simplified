@@ -17,7 +17,8 @@ var _connection;
 var _agent;
 var _available = false;
 var _networks = [];
-var _properties = {}; // object containing all the connection properties
+var _techProperties = {}; // object containing all the wifi tech properties
+var _connectionProperties = {}; // object containing all the connection properties (currently used service)
 var _self;
 
 /** https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/service-api.txt
@@ -88,6 +89,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       if(callback) callback(err); 
       return;
     }
+    _techProperties = properties;
     if(properties.Powered) { // already powered? 
       if(callback) callback(null,properties);
       return;
@@ -96,7 +98,10 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       if(callback) callback(err,properties);
     });
   });
-  _connMan.on('PropertyChanged',onPropertyChanged);
+  // Listen for Manager API property changes
+  _connMan.on('PropertyChanged',onManagerPropertyChanged);
+  // Listen for Technology (WiFi) API property changes
+  _tech.on('PropertyChanged',onTechPropertyChanged);
   // ToDo: find current connect and start listening
 };
 WiFi.prototype.enable = function(callback) {
@@ -125,6 +130,17 @@ WiFi.prototype.getProperty = function(type, callback) {
 };
 WiFi.prototype.getProperties = function(callback) {
   _tech.getProperties(callback);
+};
+WiFi.prototype.getConnectionProperties = function(callback) {
+  getConnection(function(err,connection) {
+    if(err) return callback(err);
+    connection.getProperties(function(err, props) {
+      //debug("current connection properties: ",props);
+      _connectionProperties = props;
+      callback(err,props);
+      logStatus();
+    }); 
+  });
 };
 WiFi.prototype.getNetworks = function(callback) {
   debug("getNetworks");
@@ -209,7 +225,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       // get current properties
       _connection.getProperties(function(err, props) {
         //debug("current connection properties: ",props);
-        _properties = props;
+        _connectionProperties = props;
         for(var type in props) {
           _self.emit(type,props[type]);
         }
@@ -305,33 +321,22 @@ WiFi.prototype.joinFavorite = function(callback) {
 };
 WiFi.prototype.disconnect = function(callback) {
   debug("disconnect");
-  _tech.getServices(function(err, services) {
-    var readyServiceName;
-    for(var serviceName in services){
-      var service = services[serviceName];
-      if(service.State === 'ready') {
-        readyServiceName = serviceName;
-        break;
-      }
-    }
-    if(!readyServiceName) {
-      if(callback) callback(new Error("Not connected to any wifi services"));
+  getConnection(function(err,connection) {
+    if(err) {
+      if(callback) callback(err);
       return;
     }
-    //debug("readyServiceName: ",serviceName);
-    _connMan.getConnection(readyServiceName, function(err, connection) {
-      connection.disconnect(function(err) {
-        //debug("disconnect response: ",err);
-        if (err) {
-          if (callback) callback(err);
-          return;
-        }
-        // ToDo update wifiState?
-        debug('disconnected from ' + serviceName + '...');
-        if(_connection) _connection.removeListener('PropertyChanged', onConnectionPropertyChanged);
-        if(_agent) _agent.removeAllListeners();
-        if(callback) callback();
-      });
+    connection.disconnect(function(err) {
+      //debug("disconnect response: ",err);
+      if (err) {
+        if (callback) callback(err);
+        return;
+      }
+      // ToDo update wifiState?
+      //debug('disconnected from ' + serviceName + '...');
+      if(_connection) _connection.removeListener('PropertyChanged', onConnectionPropertyChanged);
+      if(_agent) _agent.removeAllListeners();
+      if(callback) callback();
     });
   });
 };
@@ -385,14 +390,20 @@ WiFi.prototype.getAvailable = function() {
   return _available;
 };
 
-// connman / manager / ... property changed? 
-function onPropertyChanged(type, value) {
-  debug("connman: "+type+" changed: ",value);
+function onManagerPropertyChanged(type, value) {
+  debug("manager property changed: "+type+": ",value);
 }
+function onTechPropertyChanged(type, value) {
+  debug("tech property changed: "+type+": ",value);
+  _techProperties[type] = value;
+  _self.emit(type,value);
+  logStatus();
+}
+
 // Connection / service property changes
 function onConnectionPropertyChanged(type, value) {
-  debug("connection: "+type+" changed: ",value);
-  _properties[type] = value;
+  debug("service property changed: "+type+": ",value);
+  _connectionProperties[type] = value;
   _self.emit(type,value);
   switch(type) {
     case 'State':
@@ -403,6 +414,7 @@ function onConnectionPropertyChanged(type, value) {
       break;
   }
 }
+
 function parseNetworks(rawList) {
   var list = [];
   for (var index in rawList) {
@@ -421,6 +433,26 @@ function parseNetworks(rawList) {
     list.push(ap);
   }
   return list;
+}
+function getConnection(callback) { // ToDo: much overlap with connman.getOnlineService
+  _tech.getServices(function(err, services) {
+    var readyServiceName;
+    for(var serviceName in services){
+      var service = services[serviceName];
+      if(service.State === 'ready') { // ToDo check online? 
+        readyServiceName = serviceName;
+        break;
+      }
+    }
+    if(!readyServiceName) {
+      if(callback) callback(new Error("Not connected to any wifi services"));
+      return;
+    }
+    //debug("readyServiceName: ",serviceName);
+    _connMan.getConnection(readyServiceName, function(err, connection) {
+      callback(err,connection);
+    });
+  });
 }
 function getService(ssid,callback) {
   debug("getService: ",ssid);
@@ -487,9 +519,23 @@ function hexToString(tmp) {
   return str;
 }
 function logStatus() {
-  if(!_properties.State) return;
-  var address = (_properties.IPv4 && _properties.IPv4.Address)? _properties.IPv4.Address : '';
-  debug('status: ',_properties.State,"'"+_properties.Name+"'",_properties.Security,address);
+  var techProps = _techProperties;
+  var connProps = _connectionProperties;
+  
+  if(connProps.State){
+    var connectionStatus = 'connection status: ';
+    connectionStatus += (techProps.Connected)? "Connected" : "Disconnected"; 
+    connectionStatus += " "+connProps.State;
+    connectionStatus += " '"+connProps.Name+"'";
+    connectionStatus += " "+connProps.Security;
+    if(connProps.IPv4 && connProps.IPv4.Address) {
+      connectionStatus += " "+connProps.IPv4.Address;
+    }
+    debug(connectionStatus);
+  }
+  if(techProps.Tethering) {
+    debug('tethering: ',techProps.TetheringIdentifier,techProps.TetheringPassphrase);
+  }
 }
 function logNetworks() {
   debug('Networks: ');
