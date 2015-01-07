@@ -185,9 +185,9 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   async.series([
     _self.closeHotspot,
     function doGetService(next) { 
-      debug("doGetService: ",ssid);
+      //debug("doGetService: ",ssid);
       async.retry(_numGetServiceRetries, function(nextRetry) {
-        debug("(re)attempt getService");
+        //debug("(re)attempt getService");
         getService(ssid,function(err,service) {
           //debug("getService response: ",err,service);
           if(err) return setTimeout(nextRetry, _getServiceRetryTimeout, err);
@@ -283,7 +283,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       });
     }
   ],function(err,results) {
-    debug('join finished: ',err || '',results);
+    debug('join finished: ',err || '');
     if(callback) callback(err);
   });
 };
@@ -311,7 +311,7 @@ WiFi.prototype.joinFavorite = function(callback) {
       debug('doConnect');
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
       _self.join(favoriteAP.ssid,'',function(err) {
-        debug('join response: ',err || '');
+        //debug('join response: ',err || '');
         if(err) return next(err);
         if(callback) callback(err);
       });
@@ -396,7 +396,7 @@ function onManagerPropertyChanged(type, value) {
   debug("manager property changed: "+type+": ",value);
 }
 function onServicesChanged(changes,removed) {
-  debug("onServicesChanged: ");
+  var numNew = 0;
   // update networks list
   // use the new order from changes 
   for(var key in changes) {
@@ -404,8 +404,10 @@ function onServicesChanged(changes,removed) {
       changes[key] = _networks[key]; // fill with current properties
     } else {
       changes[key] = parseService(changes[key]); // parse
+      numNew++;
     }
   }
+  debug("onServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
   // remove undefined services (should only be the ethernet service)
   for(key in changes) {
     if(changes[key] === undefined) delete changes[key];
@@ -457,7 +459,7 @@ function parseService(rawService) {
   return service;
 }
 function setNetworks(networks) {
-  _networks = changes;
+  _networks = networks;
   logNetworks();
   // emit networks list as array
   var networksArr = [];
