@@ -13,7 +13,7 @@ var _numGetServiceRetries = _numScanRetries;
 var _connMan;
 var _tech;
 var _service;
-var _connection;
+var _connection; // service we are connected to
 var _agent;
 var _available = false;
 var _networks = [];
@@ -103,6 +103,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   // Listen for Technology (WiFi) API property changes
   _tech.on('PropertyChanged',onTechPropertyChanged);
   // ToDo: find current connect and start listening
+  // ToDo: Listen for ServicesChanged on _connman (Manager)
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -113,9 +114,7 @@ WiFi.prototype.enable = function(callback) {
   });
 };
 WiFi.prototype.disable = function(callback) {
-  _self.setProperty('Powered', false, function(err) {
-    setTimeout(callback, _timeoutWiFiEnable, err); // ToDo: needed?
-  });
+  _self.setProperty('Powered', false, callback);
 };
 WiFi.prototype.setProperty = function(type, value, callback) {
   _tech.setProperty(type, value, function(err) {
@@ -156,7 +155,6 @@ WiFi.prototype.getNetworks = function(callback) {
         return setTimeout(nextRetry, _scanRetryTimeout, err);
       }
       //debug("listAccessPoints");
-      // ToDo research: Results will be signaled via the ServicesChanged signal from the manager interface.
       _tech.listAccessPoints(function(err, rawList) {
         //debug("listAccessPoints response: ",err,rawList);
         if(rawList.length === 0) {
@@ -176,12 +174,10 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     return;
   }
   passphrase = passphrase || '';
-  // ToDo: update wifiSSID & wifiState
   async.series([
     _self.closeHotspot,
     function doGetService(next) { 
       debug("doGetService: ",ssid);
-      //ToDO retries
       async.retry(_numGetServiceRetries, function(nextRetry) {
         debug("(re)attempt getService");
         getService(ssid,function(err,service) {
@@ -206,6 +202,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     },
     // Hostmodule has a disconnect here, not sure why...
     function doGetConnections(next) {
+      // retrieve service we want to connect to
       _connMan.getConnection(_service.serviceName, function(err, newConnection) {
         //debug("getConnection response: ",err,newConnection);
         if (err) return next(err);
@@ -255,7 +252,6 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
             _connection.removeListener('PropertyChanged',onChange);
             next(err);
             // ToDo include error... (sometimes there is a Error property change, with a value like 'invalid-key')
-            //_self.openHotspot(); // ToDo: Shouldn't this be decided by libray/module user?
             break;
         }
       }
@@ -333,7 +329,6 @@ WiFi.prototype.disconnect = function(callback) {
         if (callback) callback(err);
         return;
       }
-      // ToDo update wifiState?
       //debug('disconnected from ' + serviceName + '...');
       if(_connection) _connection.removeListener('PropertyChanged', onConnectionPropertyChanged);
       if(_agent) _agent.removeAllListeners();
@@ -355,8 +350,6 @@ WiFi.prototype.closeHotspot = function(callback) {
       return;
     }
     setTimeout(function() {
-      // ToDo: update hotspotSSID
-      // ToDo: update hotspotState
       if (callback) callback();
     },_timeoutTetherDisable);
   });
@@ -457,6 +450,7 @@ function getConnection(callback) { // ToDo: much overlap with connman.getOnlineS
 }
 function getService(ssid,callback) {
   debug("getService: ",ssid);
+  // ToDo: Difference between findAccessPoint and getConnection? 
   _tech.findAccessPoint(ssid, function(err, service) {
     //debug("findAccessPoint response: ",err,service);
     if(err) {
