@@ -237,6 +237,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
         switch(value) {
           // when wifi ready and online
           case WIFI_STATES.READY:
+          case WIFI_STATES.ONLINE:
   //          self.connman.getOnlineService(function(err, _service) {
   //            if (_service.Type === 'ethernet' && _service.State === 'online') {
   //              if (self.wifiState !== WIFI_STATES.ONLINE) {
@@ -436,20 +437,20 @@ function parseNetworks(rawList) {
 }
 function getConnection(callback) { // ToDo: much overlap with connman.getOnlineService
   _tech.getServices(function(err, services) {
-    var readyServiceName;
+    var connectedServiceName;
     for(var serviceName in services){
       var service = services[serviceName];
-      if(service.State === 'ready') { // ToDo check online? 
-        readyServiceName = serviceName;
+      if(service.State === 'ready' || service.State === 'online') {
+        connectedServiceName = serviceName;
         break;
       }
     }
-    if(!readyServiceName) {
+    if(!connectedServiceName) {
       if(callback) callback(new Error("Not connected to any wifi services"));
       return;
     }
-    //debug("readyServiceName: ",serviceName);
-    _connMan.getConnection(readyServiceName, function(err, connection) {
+    //debug("connectedServiceName: ",serviceName);
+    _connMan.getConnection(connectedServiceName, function(err, connection) {
       callback(err,connection);
     });
   });
