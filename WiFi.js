@@ -242,7 +242,6 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
             break; 
           case WIFI_STATES.FAILURE:
             var err = new Error("Joining network failed (wrong password?)");
-            debug('[FAILURE] ',err);
             _service.removeListener('PropertyChanged',onChange);
             next(err);
             // ToDo include error... (sometimes there is a Error property change, with a value like 'invalid-key')
@@ -294,16 +293,12 @@ WiFi.prototype.joinFavorite = function(callback) {
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
       _self.join(favoriteAP.ssid,function(err) {
         //debug('join response: ',err || '');
-        if(err) return next(err);
-        if(callback) callback(err);
+        next(err);
       });
     }
   ], function(err) {
-    debug('joinFavorite series finished');
-    if(err) {
-      debug("[ERROR] joining network: ",err);
-     if(callback) callback(err); 
-    }
+    debug('joinFavorite series finished: ',err || '');
+    if(callback) callback(err); 
   });
 };
 WiFi.prototype.disconnect = function(callback) {
@@ -401,6 +396,10 @@ function onTechPropertyChanged(type, value) {
 }
 function onServicePropertyChanged(type, value) {
   type = type.toLowerCase();
+  if(type == "error") {
+    debug("[ERROR] service error: ",value);
+    return;
+  }
   if(_serviceProperties[type] == value) return;
   //verbose("service property changed: "+type+": ",value);
   _serviceProperties[type] = value; 
