@@ -193,7 +193,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       },next);
     },
     function doHandleSecurity(next) {
-      if (targetServiceData.Security.indexOf('none') > -1) {
+      if (targetServiceData.security.indexOf('none') > -1) {
         debug('[NOTE] this is an open network');
         return next();
       }
@@ -487,10 +487,12 @@ function getServiceBySSID(ssid,callback) {
   debug("getService: ",ssid);
   _tech.getServices(function(err, services) {
     if(err) return callback(err);
+    var serviceName;
     var serviceData;
-    for(var serviceName in services) {
-      if(services[serviceName].Name == ssid) {
-        serviceData = services[serviceName];
+    for(var key in services) {
+      if(services[key].Name == ssid) {
+        serviceName = key;
+        serviceData = parseService(services[serviceName]);
         debug("found network '"+ssid+"'");
         break;
       }
@@ -498,7 +500,7 @@ function getServiceBySSID(ssid,callback) {
     if (!serviceData) {
       return callback(new Error("Network '"+ssid+"' not found"));
     }
-    _connman.getService(serviceData.serviceName, function(err, service) {
+    _connman.getService(serviceName, function(err, service) {
       //debug("retrieved service: ",serviceData.serviceName,err);
       callback(err,service,serviceData); 
     });
@@ -561,7 +563,7 @@ function logStatus() {
     connectionStatus += " "+serviceProps.state;
     connectionStatus += " '"+serviceProps.ssid+"'";
     connectionStatus += " "+serviceProps.security;
-    connectionStatus += " "+serviceProps.address;
+    connectionStatus += " "+serviceProps.ipaddress;
     debug(connectionStatus);
   }
   if(techProps && techProps.tethering) {
