@@ -168,12 +168,15 @@ WiFi.prototype.scan = function(callback) {
   });
 };
 WiFi.prototype.join = function(ssid,passphrase,callback) {
-  debug("join: ",ssid,passphrase);
+  debug("join: ",ssid);
   if(ssid === undefined) {
     if(callback) callback(new Error("ssid is required"));
     return;
   }
-  passphrase = passphrase || '';
+  if(typeof passphrase == 'function') {
+    callback = passphrase;
+    passphrase = '';
+  }
   var targetService; 
   var targetServiceData; 
   async.series([
@@ -197,9 +200,10 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
         debug('[NOTE] this is an open network');
         return next();
       }
-      debug('[NOTE] this network is protected with: ' + targetServiceData.Security);
-      if(passphrase === '') {
-        next(); // ToDo also store empty password? 
+      debug('[NOTE] this network is protected with: ' + targetServiceData.security);
+      if(!passphrase || passphrase == '') {
+        if(targetServiceData.favorite) next();
+        else next(new Error("No passphrase supplied for secured network"));
       } else {
         storePassphrase(ssid,passphrase,next);
       }
@@ -288,7 +292,7 @@ WiFi.prototype.joinFavorite = function(callback) {
     },
     function doConnect(next) {
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
-      _self.join(favoriteAP.ssid,'',function(err) {
+      _self.join(favoriteAP.ssid,function(err) {
         //debug('join response: ',err || '');
         if(err) return next(err);
         if(callback) callback(err);
