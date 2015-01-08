@@ -172,6 +172,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   var targetServiceData; 
   async.series([
     _self.closeHotspot,
+    _self.scan,
     function doGetService(next) { 
       //debug("doGetService: ",ssid);
       async.retry(_numGetServiceRetries, function(nextRetry) {
