@@ -386,13 +386,6 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
     if (callback) callback(err);
   });
 };
-WiFi.prototype.isHotspot = function(callback) {
-  _self.getProperty('Tethering',function(err,value) {
-    debug("getProperty('Tethering' response: ",err,value);
-    debug("typeof value: ",typeof value);
-    return callback(err,value);
-  });
-};
 
 WiFi.prototype.getAvailable = function() {
   return _available;
@@ -413,7 +406,7 @@ function onServicesChanged(changes,removed) {
       numNew++;
     }
   }
-  debug("onServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
+  debug("ServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
   // remove undefined services (should only be the ethernet service)
   for(key in changes) {
     if(changes[key] === undefined) delete changes[key];
