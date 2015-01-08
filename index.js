@@ -5,7 +5,6 @@ const Ethernet = require('./Ethernet');
 const WiFi = require('./WiFi');
 const keypress = require('keypress');
 
-var timeoutInitConnman = 1000; //4000;
 var connMan;
 var ethernet;
 var wifi;
@@ -27,14 +26,11 @@ async.series([
     connMan = new ConnMan();
     debug('initializing connman...');
     connMan.init(function(err) {
-      debug('connMan init response: ',err || '');
       if (err) {
-        debug('[ERROR] connman init');
-        debug(err);
+        debug('[ERROR] connman init: ',err);
         return;
       }
-      debug('[OK] connman init (timeout: ' + timeoutInitConnman +')');
-      setTimeout(next, timeoutInitConnman);
+      next();
     });
   },
   function initEthernet(next) {
