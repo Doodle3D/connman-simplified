@@ -8,6 +8,19 @@ var _available = false;
 
 module.exports = Ethernet;
 
+const ETHERNET_STATES = {
+  IDLE: 'idle',
+  FAILURE: 'failure',
+  ASSOCIATION: 'association',
+  CONFIGURATION: 'configuration',
+  READY: 'ready',
+  DISCONNECT: 'disconnect',
+  ONLINE: 'online',
+  CONNECTING: 'connecting', //--extra
+  UNKNOWN: 'unkown', //--extra
+  DISABLED: 'disabled'
+};
+
 function Ethernet(connMan) {
   _connMan = connMan;
 }

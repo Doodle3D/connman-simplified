@@ -46,19 +46,6 @@ const HOTSPOT_STATES = {
   ENABLED: 'enabled'
 };
 
-const ETHERNET_STATES = {
-  IDLE: 'idle',
-  FAILURE: 'failure',
-  ASSOCIATION: 'association',
-  CONFIGURATION: 'configuration',
-  READY: 'ready',
-  DISCONNECT: 'disconnect',
-  ONLINE: 'online',
-  CONNECTING: 'connecting', //--extra
-  UNKNOWN: 'unkown', //--extra
-  DISABLED: 'disabled'
-};
-
 module.exports = WiFi;
 module.exports.WIFI_STATES = WIFI_STATES;
 
