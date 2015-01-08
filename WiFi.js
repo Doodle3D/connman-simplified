@@ -15,9 +15,9 @@ var _tech;
 var _service; // service we are connected to
 var _agent;
 var _available = false;
-var _networks = [];
+var _networks = []; // current wifi services info (filtered by parseServices)
 var _techProperties = {}; // object containing all the wifi tech properties
-var _serviceProperties = {}; // object containing all the service properties
+var _serviceProperties = {}; // object containing all the service properties (filtered by parseService)
 var _hotspotSSID;
 var _hotspotPassphrase;
 var _self;
@@ -77,7 +77,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       return;
     }
     _techProperties = properties;
-    if(properties.Powered) { // already powered? 
+    if(properties.powered) { // already powered? 
       if(callback) callback(null,properties);
       return;
     }
@@ -125,7 +125,13 @@ WiFi.prototype.getProperty = function(type, callback) {
   });
 };
 WiFi.prototype.getProperties = function(callback) {
-  _tech.getProperties(callback);
+  _tech.getProperties(function(err,properties) {
+    var filtered = {};
+    for(var key in properties) {
+      filtered[key.toLowerCase()] = properties[key];
+    }
+    callback(err,filtered);
+  });
 };
 WiFi.prototype.getConnectionProperties = function(callback) {
   callback(null,_serviceProperties);
@@ -148,7 +154,7 @@ WiFi.prototype.getNetworks = function(callback) {
 };
 WiFi.prototype.scan = function(callback) {
   debug("scan");
-  if(_techProperties.Tethering) {
+  if(_techProperties.tethering) {
     debug("[Warning] Scanning while in tethering mode is usually not supported");
   }
   _tech.scan(function(err) {
@@ -382,6 +388,7 @@ function onServicesChanged(changes,removed) {
   });
 }
 function onTechPropertyChanged(type, value) {
+  type = type.toLowerCase();
   if(_techProperties[type] == value) return;
   //verbose("tech property changed: "+type+": ",value);
   _techProperties[type] = value;
@@ -389,14 +396,18 @@ function onTechPropertyChanged(type, value) {
   logStatus();
 }
 function onServicePropertyChanged(type, value) {
+  type = type.toLowerCase();
   if(_serviceProperties[type] == value) return;
   //verbose("service property changed: "+type+": ",value);
-  _serviceProperties[type] = value;
+  _serviceProperties[type] = value; 
   _self.emit(type,value);
+  if((type == 'IPv4' || type == 'IPv6') && value.Address) {
+    _self.emit('ipaddress',value.Address);
+  }
   switch(type) {
-    case 'State':
-    case 'Name':
-    case 'Security':
+    case 'state':
+    case 'name':
+    case 'security':
     case 'IPv4':
       logStatus();
       break;
@@ -421,7 +432,9 @@ function parseService(rawService) {
     if(include.indexOf(propType) === -1) continue;
     service[propType.toLowerCase()] = rawService[propType];
   }
-  service.ssid = String(rawService.Name ? rawService.Name : '*hidden*');
+  service.ssid = rawService.Name ? rawService.Name : '*hidden*';
+  service.ipaddress = (rawService.IPv4 && rawService.IPv4.address) ? rawService.IPv4.address : '';
+  service.ipaddress = (rawService.IPv6 && rawService.IPv6.address) ? rawService.IPv6.address : '';
   return service;
 }
 function setService(service) {  
@@ -542,20 +555,17 @@ function hexToString(tmp) {
 function logStatus() {
   var techProps = _techProperties;
   var serviceProps = _serviceProperties;
-  
-  if(serviceProps && serviceProps.State){
+  if(serviceProps && serviceProps.state){
     var connectionStatus = 'connection status: ';
-    connectionStatus += (techProps.Connected)? "Connected" : "Disconnected"; 
-    connectionStatus += " "+serviceProps.State;
-    connectionStatus += " '"+serviceProps.Name+"'";
-    connectionStatus += " "+serviceProps.Security;
-    if(serviceProps.IPv4 && serviceProps.IPv4.Address) {
-      connectionStatus += " "+serviceProps.IPv4.Address;
-    }
+    connectionStatus += (techProps.connected)? "Connected" : "Disconnected"; 
+    connectionStatus += " "+serviceProps.state;
+    connectionStatus += " '"+serviceProps.ssid+"'";
+    connectionStatus += " "+serviceProps.security;
+    connectionStatus += " "+serviceProps.address;
     debug(connectionStatus);
   }
-  if(techProps && techProps.Tethering) {
-    debug('tethering: ',techProps.TetheringIdentifier,techProps.TetheringPassphrase);
+  if(techProps && techProps.tethering) {
+    debug('tethering: ',techProps.tetheringidentifier,techProps.tetheringpassphrase);
   }
 }
 function logNetworks(onChange) {
