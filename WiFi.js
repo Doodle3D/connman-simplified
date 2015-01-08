@@ -10,15 +10,14 @@ var _scanRetryTimeout = 5000;
 var _numScanRetries = 3;
 var _getServiceRetryTimeout = _scanRetryTimeout;
 var _numGetServiceRetries = _numScanRetries;
-var _connMan;
+var _connman;
 var _tech;
-var _service;
-var _connection; // service we are connected to
+var _service; // service we are connected to
 var _agent;
 var _available = false;
 var _networks = [];
 var _techProperties = {}; // object containing all the wifi tech properties
-var _connectionProperties = {}; // object containing all the connection properties (currently used service)
+var _serviceProperties = {}; // object containing all the service properties
 var _self;
 
 /** https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/service-api.txt
@@ -52,8 +51,8 @@ module.exports.WIFI_STATES = WIFI_STATES;
 var _hotspotSSID;
 var _hotspotPassphrase;
 
-function WiFi(connMan) {
-  _connMan = connMan;
+function WiFi(connman) {
+  _connman = connman;
 }
 
 util.inherits(WiFi, EventEmitter);
@@ -65,7 +64,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   _hotspotPassphrase = hotspotPassphrase;
   // Retrieve WiFi technology
   // https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/technology-api.txt
-  _tech = _connMan.technologies.WiFi;
+  _tech = _connman.technologies.WiFi;
   if(_tech === undefined) {
     if(callback) callback(new Error("No WiFi hardware available"));
     return;
@@ -86,19 +85,25 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
     });
   });
   // Listen to Manager API for property changes
-  _connMan.on('PropertyChanged',onManagerPropertyChanged);
+  _connman.on('PropertyChanged',onManagerPropertyChanged);
+  // Listen to Manager API for Services changes
+  _connman.on('ServicesChanged',onServicesChanged);
   // Listen to Technology (WiFi) API for property changes
   _tech.on('PropertyChanged',onTechPropertyChanged);
   // ToDo: find current connect and start listening
   
   // Get current services (networks) 
   _tech.getServices(function(err,services) {
-    //debug("_connMan.getServices respone: ",arguments);
+    //debug("_connman.getServices respone: ",arguments);
     if(err) return debug("[Warning] Coulnd't get current services: ",err);
     setNetworks(parseServices(services));
   });
-  // Listen to Manager API for Services changes
-  _connMan.on('ServicesChanged',onServicesChanged);
+  // Get current service (network) 
+  getCurrentService(function(err,service) {
+    if(err) return;
+    _service = service;
+    _service.on('PropertyChanged', onServicePropertyChanged);
+  });
 };
 WiFi.prototype.enable = function(callback) {
   // Note: Hostmodule tries this 3 times?
@@ -126,11 +131,11 @@ WiFi.prototype.getProperties = function(callback) {
   _tech.getProperties(callback);
 };
 WiFi.prototype.getConnectionProperties = function(callback) {
-  getConnection(function(err,connection) {
+  getCurrentService(function(err,service) {
     if(err) return callback(err);
-    connection.getProperties(function(err, props) {
+    service.getProperties(function(err, props) {
       //debug("current connection properties: ",props);
-      _connectionProperties = props;
+      _serviceProperties = props;
       callback(err,props);
       logStatus();
     }); 
@@ -175,22 +180,25 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     return;
   }
   passphrase = passphrase || '';
+  var targetService; 
+  var targetServiceData; 
   async.series([
     _self.closeHotspot,
     function doGetService(next) { 
       //debug("doGetService: ",ssid);
       async.retry(_numGetServiceRetries, function(nextRetry) {
         //debug("(re)attempt getService");
-        getService(ssid,function(err,service) {
+        getServiceBySSID(ssid,function(err,service,serviceData) {
           //debug("getService response: ",err,service);
           if(err) return setTimeout(nextRetry, _getServiceRetryTimeout, err);
-          _service = service;
+          targetService = service;
+          targetServiceData = serviceData;
           next();
         });
       },next);
     },
     function doHandleSecurity(next) {
-      if (_service.Security.indexOf('none') > -1) {
+      if (targetServiceData.Security.indexOf('none') > -1) {
         debug('[NOTE] this is an open network');
         return next();
       }
@@ -202,17 +210,10 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       }
     },
     // Hostmodule has a disconnect here, not sure why...
-    function doGetConnections(next) {
-      // retrieve service we want to connect to
-      _connMan.getConnection(_service.serviceName, function(err, newConnection) {
-        //debug("getConnection response: ",err,newConnection);
-        if (err) return next(err);
-        _connection = newConnection;
-        next();
-      });
-    },
     function doConnect(next) {
-      _connection.connect(function(err, newAgent) {
+      if(_service) _service.removeAllListeners();
+      _service = targetService; 
+      _service.connect(function(err, newAgent) {
         //debug("connect response: ",err || ''/*,newAgent*/);
         if (err) return next(err);
         _agent = newAgent;
@@ -221,9 +222,9 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
     },
     function doListen(next) {
       // get current properties
-      _connection.getProperties(function(err, props) {
-        //debug("current connection properties: ",props);
-        _connectionProperties = props;
+      _service.getProperties(function(err, props) {
+        //debug("current service properties: ",props);
+        _serviceProperties = props;
         for(var type in props) {
           _self.emit(type,props[type]);
         }
@@ -231,7 +232,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       });
       function onChange(type, value) {
         if(type !== 'State') return;
-        //debug("connection State: ",value);
+        //debug("service State: ",value);
         switch(value) {
           // when wifi ready and online
           case WIFI_STATES.READY:
@@ -244,21 +245,21 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   //              }
   //            }
   //          });
-            _connection.removeListener('PropertyChanged',onChange);
+            _service.removeListener('PropertyChanged',onChange);
             next();
             break; 
           case WIFI_STATES.FAILURE:
             var err = new Error("Joining network failed (wrong password?)");
             debug('[FAILURE] ',err);
-            _connection.removeListener('PropertyChanged',onChange);
+            _service.removeListener('PropertyChanged',onChange);
             next(err);
             // ToDo include error... (sometimes there is a Error property change, with a value like 'invalid-key')
             break;
         }
       }
-      _connection.on('PropertyChanged',onChange);  
+      _service.on('PropertyChanged',onChange);  
       // keep listening 
-      _connection.on('PropertyChanged', onConnectionPropertyChanged);
+      _service.on('PropertyChanged', onServicePropertyChanged);
       _agent.on('Release', function() {
         debug("agent: Release: ",arguments);
       });
@@ -319,19 +320,19 @@ WiFi.prototype.joinFavorite = function(callback) {
 };
 WiFi.prototype.disconnect = function(callback) {
   debug("disconnect");
-  getConnection(function(err,connection) {
+  getCurrentService(function(err,service) {
     if(err) {
       if(callback) callback(err);
       return;
     }
-    connection.disconnect(function(err) {
+    _service.disconnect(function(err) {
       //debug("disconnect response: ",err);
       if (err) {
         if (callback) callback(err);
         return;
       }
       //debug('disconnected from ' + serviceName + '...');
-      if(_connection) _connection.removeListener('PropertyChanged', onConnectionPropertyChanged);
+      _service.removeListener('PropertyChanged', onServicePropertyChanged);
       if(_agent) _agent.removeAllListeners();
       if(callback) callback();
     });
@@ -383,24 +384,19 @@ function onManagerPropertyChanged(type, value) {
 }
 function onServicesChanged(changes,removed) {
   var numNew = 0;
-  // update networks list
-  // use the new order from changes 
   for(var key in changes) {
-    if(Object.keys(changes[key]).length === 0) { // empty?
-      changes[key] = _networks[key]; // fill with current properties
-    } else {
-      changes[key] = parseService(changes[key]); // parse
+    if(Object.keys(changes[key]).length > 0) { // not empty
       numNew++;
     }
   }
   debug("ServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
-  // remove undefined services (should only be the ethernet service)
-  for(key in changes) {
-    if(changes[key] === undefined) delete changes[key];
-  }
-  setNetworks(changes);
+  
   // Future: emit per removed network a networkRemoved event
   // Future: emit per added network a networkAdded event
+  
+  _tech.getServices(function(err,services) {
+    setNetworks(parseServices(services));
+  });
 }
 function onTechPropertyChanged(type, value) {
   debug("tech property changed: "+type+": ",value);
@@ -408,10 +404,10 @@ function onTechPropertyChanged(type, value) {
   _self.emit(type,value);
   logStatus();
 }
-// Connection / service property changes
-function onConnectionPropertyChanged(type, value) {
+// service property changes
+function onServicePropertyChanged(type, value) {
   debug("service property changed: "+type+": ",value);
-  _connectionProperties[type] = value;
+  _serviceProperties[type] = value;
   _self.emit(type,value);
   switch(type) {
     case 'State':
@@ -454,41 +450,43 @@ function setNetworks(networks) {
   }
   _self.emit('networks',networksArr);
 }
-function getConnection(callback) { // ToDo: much overlap with connman.getOnlineService
+function getCurrentService(callback) {
   _tech.getServices(function(err, services) {
     var connectedServiceName;
     for(var serviceName in services){
-      var service = services[serviceName];
-      if(service.State === 'ready' || service.State === 'online') {
+      var serviceData = services[serviceName];
+      if(serviceData.State === 'ready' || serviceData.State === 'online') {
         connectedServiceName = serviceName;
         break;
       }
     }
     if(!connectedServiceName) {
-      if(callback) callback(new Error("Not connected to any wifi services"));
-      return;
+      return callback(new Error("Not connected to any wifi services"));
     }
     //debug("connectedServiceName: ",serviceName);
-    _connMan.getConnection(connectedServiceName, function(err, connection) {
-      callback(err,connection);
+    _connman.getService(connectedServiceName, function(err, service) {
+      _service = service;
+      callback(err,service);
     });
   });
 }
-function getService(ssid,callback) {
+function getServiceBySSID(ssid,callback) {
   debug("getService: ",ssid);
-  // ToDo: Difference between findAccessPoint and getConnection? 
-  _tech.findAccessPoint(ssid, function(err, service) {
-    //debug("findAccessPoint response: ",err,service);
-    if(err) {
-      if (callback) callback(err);
-      return;
+  _tech.getServices(function(err, services) {
+    if(err) return next(err);
+    for(var serviceName in services) {
+      if(services[serviceName].Name == ssid) {
+        serviceData = services[serviceName];
+        debug("found network '"+ssid+"'");
+        break;
+      }
     }
-    if (!service) {
-      if(callback) callback(new Error("Network '"+ssid+"' not found"))
-      return;
+    if (!serviceData) {
+      return callback(new Error("Network '"+ssid+"' not found"));
     }
-    //debug("service: ",service);
-    if (callback) callback(null,service);
+    _connman.getService(serviceData.serviceName, function(err, service) {
+      callback(err,service,serviceData); 
+    });
   });
 }
 function storePassphrase (ssid, passphrase, callback) {
@@ -541,7 +539,7 @@ function hexToString(tmp) {
 }
 function logStatus() {
   var techProps = _techProperties;
-  var connProps = _connectionProperties;
+  var connProps = _serviceProperties;
   
   if(connProps.State){
     var connectionStatus = 'connection status: ';

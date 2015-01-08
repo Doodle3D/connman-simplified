@@ -36,7 +36,7 @@ Ethernet.prototype.init = function(callback) {
     //debug('found ethernet services: ' + Object.keys(services));
     async.eachSeries(Object.keys(services), function(serviceName,eachNext) {
       //debug('get ethernet service: ' + serviceName);
-      _connMan.getConnection(serviceName, function(err, connection) {
+      _connMan.getService(serviceName, function(err, connection) {
         //debug('wired getConnection response: ',err/*,connection*/);
         _service = connection;
         _service.getProperties(function(err, props) {
