@@ -1,8 +1,9 @@
-const debug       = require('debug')('connman-tests:wifi');
-const async       = require('async');
-const fs          = require('fs');
-var util          = require("util");
-var EventEmitter  = require("events").EventEmitter;
+const debug         = require('debug')('connman-tests:wifi');
+const verbose       = require('debug')('connman-tests:wifi:verbose');
+const async         = require('async');
+const fs            = require('fs');
+var util            = require("util");
+var EventEmitter    = require("events").EventEmitter;
 
 var _timeoutWiFiEnable = 3000;
 var _scanRetryTimeout = 5000;
@@ -50,7 +51,9 @@ module.exports = WiFi;
 module.exports.WIFI_STATES = WIFI_STATES;
 
 function WiFi(connman) {
+  _self = this;
   _connman = connman;
+  _self.logNetworksOnChange = false;
 }
 
 util.inherits(WiFi, EventEmitter);
@@ -91,7 +94,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   _tech.getServices(function(err,services) {
     //debug("_connman.getServices respone: ",arguments);
     if(err) return debug("[Warning] Coulnd't get current services: ",err);
-    setNetworks(parseServices(services));
+    setNetworks(parseServices(services),false);
   });
   // Monitor current service (network) 
   getCurrentService(function(err,service) {
@@ -146,8 +149,7 @@ WiFi.prototype.getNetworks = function(callback) {
         if(Object.keys(services).length === 0) {
           return setTimeout(nextRetry, _scanRetryTimeout, new Error('No WiFi networks found'));
         }
-        debug("networks found by: getNetworks ");
-        setNetworks(parseServices(services));
+        setNetworks(parseServices(services),false);
         callback(null, _networks);
       });
     });
@@ -346,7 +348,7 @@ WiFi.prototype.closeHotspot = function(callback) {
   _tech.on('PropertyChanged',localTechOnProperyChanged);
   
   _tech.disableTethering(function(err, res) {
-    //debug("disableTethering response: ",err,res);
+    //verbose("disableTethering response: ",err,res);
     if (err) {
       // not reporting already disabled as error
       if (err.message === 'net.connman.Error.AlreadyDisabled') {
@@ -377,13 +379,12 @@ WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
     if (callback) callback(err);
   });
 };
-
 WiFi.prototype.getAvailable = function() {
   return _available;
 };
 
 function onManagerPropertyChanged(type, value) {
-  debug("manager property changed: "+type+": ",value);
+  verbose("manager property changed: "+type+": ",value);
 }
 function onServicesChanged(changes,removed) {
   var numNew = 0;
@@ -392,24 +393,23 @@ function onServicesChanged(changes,removed) {
       numNew++;
     }
   }
-  debug("ServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
+  verbose("ServicesChanged: added: "+numNew+" removed: "+Object.keys(removed).length);
   
   // Future: emit per removed network a networkRemoved event
   // Future: emit per added network a networkAdded event
   
   _tech.getServices(function(err,services) {
-    setNetworks(parseServices(services));
+    setNetworks(parseServices(services),true);
   });
 }
 function onTechPropertyChanged(type, value) {
-  debug("tech property changed: "+type+": ",value);
+  //verbose("tech property changed: "+type+": ",value);
   _techProperties[type] = value;
   _self.emit(type,value);
   logStatus();
 }
-// service property changes
 function onServicePropertyChanged(type, value) {
-  debug("service property changed: "+type+": ",value);
+  //verbose("service property changed: "+type+": ",value);
   _serviceProperties[type] = value;
   _self.emit(type,value);
   switch(type) {
@@ -443,9 +443,9 @@ function parseService(rawService) {
   service.ssid = String(rawService.Name ? rawService.Name : '*hidden*');
   return service;
 }
-function setNetworks(networks) {
+function setNetworks(networks,onchange) {
   _networks = networks;
-  logNetworks();
+  logNetworks(onchange);
   // emit networks list as array
   var networksArr = [];
   for (var key in _networks) {
@@ -542,24 +542,25 @@ function hexToString(tmp) {
 }
 function logStatus() {
   var techProps = _techProperties;
-  var connProps = _serviceProperties;
+  var serviceProps = _serviceProperties;
   
-  if(connProps.State){
+  if(serviceProps && serviceProps.State){
     var connectionStatus = 'connection status: ';
     connectionStatus += (techProps.Connected)? "Connected" : "Disconnected"; 
-    connectionStatus += " "+connProps.State;
-    connectionStatus += " '"+connProps.Name+"'";
-    connectionStatus += " "+connProps.Security;
-    if(connProps.IPv4 && connProps.IPv4.Address) {
-      connectionStatus += " "+connProps.IPv4.Address;
+    connectionStatus += " "+serviceProps.State;
+    connectionStatus += " '"+serviceProps.Name+"'";
+    connectionStatus += " "+serviceProps.Security;
+    if(serviceProps.IPv4 && serviceProps.IPv4.Address) {
+      connectionStatus += " "+serviceProps.IPv4.Address;
     }
     debug(connectionStatus);
   }
-  if(techProps.Tethering) {
+  if(techProps && techProps.Tethering) {
     debug('tethering: ',techProps.TetheringIdentifier,techProps.TetheringPassphrase);
   }
 }
-function logNetworks() {
+function logNetworks(onChange) {
+  if(onChange && !_self.logNetworksOnChange) return;
   var states = {online: 'O', 
                  ready: 'R', 
                  association: 'a', 

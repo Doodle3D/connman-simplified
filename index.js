@@ -122,5 +122,8 @@ process.stdin.on('keypress', function (ch, key) {
         if(err) debug("[ERROR] get connection properties: ",err);
       });
       break;
+    case 'l':
+      wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
+      break;
   }
 });
