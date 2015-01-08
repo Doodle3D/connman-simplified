@@ -70,8 +70,8 @@ async.series([
 // listen for the "keypress" event
 process.stdin.on('keypress', function (ch, key) {
   //debug('keypress: ', ch, key);
-  if(key) keyName = key.name;
-  else keyName = ch;
+  var keyName = (key)? key.name : ch;
+  debug("");
   debug(keyName+" > ");
   switch(keyName) {
     case 'c':

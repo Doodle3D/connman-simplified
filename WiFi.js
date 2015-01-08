@@ -191,7 +191,7 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
         debug('[NOTE] this is an open network');
         return next();
       }
-      debug('[NOTE] this network is protected with: ' + _service.Security);
+      debug('[NOTE] this network is protected with: ' + targetServiceData.Security);
       if(passphrase === '') {
         next(); // ToDo also store empty password? 
       } else {
@@ -382,12 +382,14 @@ function onServicesChanged(changes,removed) {
   });
 }
 function onTechPropertyChanged(type, value) {
+  if(_techProperties[type] == value) return;
   //verbose("tech property changed: "+type+": ",value);
   _techProperties[type] = value;
   _self.emit(type,value);
   logStatus();
 }
 function onServicePropertyChanged(type, value) {
+  if(_serviceProperties[type] == value) return;
   //verbose("service property changed: "+type+": ",value);
   _serviceProperties[type] = value;
   _self.emit(type,value);
@@ -471,7 +473,8 @@ function getCurrentService(callback) {
 function getServiceBySSID(ssid,callback) {
   debug("getService: ",ssid);
   _tech.getServices(function(err, services) {
-    if(err) return next(err);
+    if(err) return callback(err);
+    var serviceData;
     for(var serviceName in services) {
       if(services[serviceName].Name == ssid) {
         serviceData = services[serviceName];
@@ -483,6 +486,7 @@ function getServiceBySSID(ssid,callback) {
       return callback(new Error("Network '"+ssid+"' not found"));
     }
     _connman.getService(serviceData.serviceName, function(err, service) {
+      //debug("retrieved service: ",serviceData.serviceName,err);
       callback(err,service,serviceData); 
     });
   });
