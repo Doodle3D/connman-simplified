@@ -181,11 +181,11 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
   var targetServiceData; 
   async.series([
     _self.closeHotspot,
-    _self.scan,
     function doGetService(next) { 
       //debug("doGetService: ",ssid);
       async.retry(_numGetServiceRetries, function(nextRetry) {
-        //debug("(re)attempt getService");
+        //debug("(re)attempt scan & getService");
+        _self.scan(); // start scan, but don't wait for it
         getServiceBySSID(ssid,function(err,service,serviceData) {
           //debug("getService response: ",err,service);
           if(err) return setTimeout(nextRetry, _getServiceRetryTimeout, err);
