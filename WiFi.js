@@ -578,11 +578,20 @@ function logStatus() {
   }
 }
 function logNetworks() {
+  var states = {online: 'O', 
+                 ready: 'R', 
+                 association: 'a', 
+                 configuration: 'c', 
+                 disconnecting: 'd',
+                 idle: ' ',
+                 failure: 'x'};
   debug('Networks: ');
-  for(index in _networks) {
-    var network = _networks[index];
+  for(var serviceName in _networks) {
+    var network = _networks[serviceName];
     var networkLine = network.favorite? '*' : ' ';
-    networkLine += "'"+network.ssid+"'";
-    debug(networkLine,network.security,network.state);
+    networkLine += network.autoconnect? 'A' : ' '; 
+    networkLine += states[network.state];
+    networkLine += " '"+network.ssid+"'";
+    debug(networkLine,network.security);
   }
 }
