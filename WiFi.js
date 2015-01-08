@@ -5,7 +5,6 @@ var util          = require("util");
 var EventEmitter  = require("events").EventEmitter;
 
 var _timeoutWiFiEnable = 3000;
-var _timeoutTetherDisable = 4000;
 var _scanRetryTimeout = 5000;
 var _numScanRetries = 3;
 var _getServiceRetryTimeout = _scanRetryTimeout;
@@ -18,6 +17,8 @@ var _available = false;
 var _networks = [];
 var _techProperties = {}; // object containing all the wifi tech properties
 var _serviceProperties = {}; // object containing all the service properties
+var _hotspotSSID;
+var _hotspotPassphrase;
 var _self;
 
 /** https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/service-api.txt
@@ -47,9 +48,6 @@ const HOTSPOT_STATES = {
 
 module.exports = WiFi;
 module.exports.WIFI_STATES = WIFI_STATES;
-
-var _hotspotSSID;
-var _hotspotPassphrase;
 
 function WiFi(connman) {
   _connman = connman;
@@ -84,13 +82,10 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
       if(callback) callback(err,properties);
     });
   });
-  // Listen to Manager API for property changes
+  // Monitor manager and technogy API
   _connman.on('PropertyChanged',onManagerPropertyChanged);
-  // Listen to Manager API for Services changes
   _connman.on('ServicesChanged',onServicesChanged);
-  // Listen to Technology (WiFi) API for property changes
   _tech.on('PropertyChanged',onTechPropertyChanged);
-  // ToDo: find current connect and start listening
   
   // Get current services (networks) 
   _tech.getServices(function(err,services) {
@@ -98,7 +93,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
     if(err) return debug("[Warning] Coulnd't get current services: ",err);
     setNetworks(parseServices(services));
   });
-  // Get current service (network) 
+  // Monitor current service (network) 
   getCurrentService(function(err,service) {
     if(err) return;
     _service = service;
@@ -340,6 +335,16 @@ WiFi.prototype.disconnect = function(callback) {
 };
 WiFi.prototype.closeHotspot = function(callback) {
   debug("closeHotspot");
+  
+  // monitor tech's property changed to know when tethering is disabled
+  function localTechOnProperyChanged(type,value) {
+    if(type == 'Tethering' && value === false) {
+      if(callback) callback();
+      _tech.removeListener('PropertyChanged',localTechOnProperyChanged);
+    }
+  }
+  _tech.on('PropertyChanged',localTechOnProperyChanged);
+  
   _tech.disableTethering(function(err, res) {
     //debug("disableTethering response: ",err,res);
     if (err) {
@@ -348,12 +353,10 @@ WiFi.prototype.closeHotspot = function(callback) {
         debug('[NOTE] Hotspot already closed');
         err = null;
       } 
+      _tech.removeListener('PropertyChanged',localTechOnProperyChanged);
       if (callback) callback(err);
       return;
     }
-    setTimeout(function() {
-      if (callback) callback();
-    },_timeoutTetherDisable);
   });
 };
 WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
