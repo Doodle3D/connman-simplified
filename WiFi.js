@@ -99,8 +99,7 @@ WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
   // Monitor current service (network) 
   getCurrentService(function(err,service) {
     if(err) return;
-    _service = service;
-    _service.on('PropertyChanged', onServicePropertyChanged);
+    setService(service);
   });
 };
 WiFi.prototype.enable = function(callback) {
@@ -129,15 +128,7 @@ WiFi.prototype.getProperties = function(callback) {
   _tech.getProperties(callback);
 };
 WiFi.prototype.getConnectionProperties = function(callback) {
-  getCurrentService(function(err,service) {
-    if(err) return callback(err);
-    service.getProperties(function(err, props) {
-      //debug("current connection properties: ",props);
-      _serviceProperties = props;
-      callback(err,props);
-      logStatus();
-    }); 
-  });
+  callback(null,_serviceProperties);
 };
 WiFi.prototype.getNetworks = function(callback) {
   debug("getNetworks");
@@ -201,32 +192,25 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
       }
       debug('[NOTE] this network is protected with: ' + _service.Security);
       if(passphrase === '') {
-        next();
+        next(); // ToDo also store empty password? 
       } else {
         storePassphrase(ssid,passphrase,next);
       }
     },
     // Hostmodule has a disconnect here, not sure why...
+    function switchService(next) {
+      setService(targetService);
+      next();
+    },
     function doConnect(next) {
-      if(_service) _service.removeAllListeners();
-      _service = targetService; 
       _service.connect(function(err, newAgent) {
-        //debug("connect response: ",err || ''/*,newAgent*/);
+        debug("connect response: ",err || ''/*,newAgent*/);
         if (err) return next(err);
         _agent = newAgent;
         next();
       });
     },
     function doListen(next) {
-      // get current properties
-      _service.getProperties(function(err, props) {
-        //debug("current service properties: ",props);
-        _serviceProperties = props;
-        for(var type in props) {
-          _self.emit(type,props[type]);
-        }
-        logStatus();
-      });
       function onChange(type, value) {
         if(type !== 'State') return;
         //debug("service State: ",value);
@@ -255,8 +239,6 @@ WiFi.prototype.join = function(ssid,passphrase,callback) {
         }
       }
       _service.on('PropertyChanged',onChange);  
-      // keep listening 
-      _service.on('PropertyChanged', onServicePropertyChanged);
       _agent.on('Release', function() {
         debug("agent: Release: ",arguments);
       });
@@ -284,7 +266,6 @@ WiFi.prototype.joinFavorite = function(callback) {
   async.series([
     _self.closeHotspot,
     function doFindFavoriteNetwork(next) {
-      debug('doFindFavoriteNetwork');
       _self.getNetworks(function(err,list) {
         if(err) return next(err);
         for (var index in list) {
@@ -299,7 +280,6 @@ WiFi.prototype.joinFavorite = function(callback) {
       });
     },
     function doConnect(next) {
-      debug('doConnect');
       //--join favorite, passphrase: '' because a) open network, b) known /var/lib/connman/network- file
       _self.join(favoriteAP.ssid,'',function(err) {
         //debug('join response: ',err || '');
@@ -329,7 +309,6 @@ WiFi.prototype.disconnect = function(callback) {
         return;
       }
       //debug('disconnected from ' + serviceName + '...');
-      _service.removeListener('PropertyChanged', onServicePropertyChanged);
       if(_agent) _agent.removeAllListeners();
       if(callback) callback();
     });
@@ -337,7 +316,6 @@ WiFi.prototype.disconnect = function(callback) {
 };
 WiFi.prototype.closeHotspot = function(callback) {
   debug("closeHotspot");
-  
   // monitor tech's property changed to know when tethering is disabled
   function localTechOnProperyChanged(type,value) {
     if(type == 'Tethering' && value === false) {
@@ -442,6 +420,22 @@ function parseService(rawService) {
   }
   service.ssid = String(rawService.Name ? rawService.Name : '*hidden*');
   return service;
+}
+function setService(service) {  
+  if(_service) _service.removeAllListeners();
+  _service = service;
+  // get properties (logStatus)
+  _service.getProperties(function(err, props) {
+    //debug("new service properties: ",props);
+    _serviceProperties = parseService(props);
+    for(var type in _serviceProperties) {
+      _self.emit(type,_serviceProperties[type]); //ToDo lowercase
+    }
+    logStatus();
+  });
+  // listen for property changes
+  _service.on('PropertyChanged', onServicePropertyChanged);
+  // ToDo: broadcast event? 
 }
 function setNetworks(networks,onchange) {
   _networks = networks;
