@@ -151,7 +151,6 @@ WiFi.prototype.getConnectionProperties = function(callback) {
 };
 WiFi.prototype.getNetworks = function(callback) {
   debug("getNetworks");
-  // ToDo: check if tethering, if so we can't scan
   async.retry(_numScanRetries, function(nextRetry) {
     _self.scan(function(err) {
       if(err) return setTimeout(nextRetry, _scanRetryTimeout, err);
@@ -169,8 +168,10 @@ WiFi.prototype.getNetworks = function(callback) {
 };
 WiFi.prototype.scan = function(callback) {
   debug("scan");
-  // ToDo: check if tethering, if so we can't scan
-  _tech.scan(function(err) { // ToDo: create separate scan function
+  if(_techProperties.Tethering) {
+    debug("[Warning] Scanning while in tethering mode is usually not supported");
+  }
+  _tech.scan(function(err) {
     if(err) {
       debug("[Error] scanning: ",err);
       if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
