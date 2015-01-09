@@ -111,7 +111,7 @@ WiFi.prototype.disable = function(callback) {
   _self.setProperty('Powered', false, callback);
 };
 WiFi.prototype.setProperty = function(type, value, callback) {
-  _tech.setProperty(type, value, function(err) {
+  _tech.setProperty(upperCaseFirstLetter(type), value, function(err) {
     if(callback) callback(err);
   });
 };
@@ -125,7 +125,7 @@ WiFi.prototype.getProperties = function(callback) {
   _tech.getProperties(function(err,properties) {
     var filtered = {};
     for(var key in properties) {
-      filtered[key.toLowerCase()] = properties[key];
+      filtered[lowerCaseFirstLetter(key)] = properties[key];
     }
     callback(err,filtered);
   });
@@ -402,7 +402,7 @@ function onServicesChanged(changes,removed) {
   });
 }
 function onTechPropertyChanged(type, value) {
-  type = type.toLowerCase();
+  type = lowerCaseFirstLetter(type);
   if(_techProperties[type] == value) return;
   //verbose("tech property changed: "+type+": ",value);
   _techProperties[type] = value;
@@ -410,7 +410,7 @@ function onTechPropertyChanged(type, value) {
   logStatus();
 }
 function onServicePropertyChanged(type, value) {
-  type = type.toLowerCase();
+  type = lowerCaseFirstLetter(type);
   if(type == "error") {
     debug("[ERROR] service error: ",value);
     return;
@@ -448,7 +448,7 @@ function parseService(rawService) {
   
   for (var propType in rawService) {
     if(include.indexOf(propType) === -1) continue;
-    service[propType.toLowerCase()] = rawService[propType];
+    service[lowerCaseFirstLetter(propType)] = rawService[propType];
   }
   service.ssid = rawService.Name ? rawService.Name : '*hidden*';
   service.ipaddress = (rawService.IPv4 && rawService.IPv4.address) ? rawService.IPv4.address : '';
@@ -463,7 +463,7 @@ function setService(service) {
     //debug("new service properties: ",props);
     _serviceProperties = parseService(props);
     for(var type in _serviceProperties) {
-      _self.emit(type,_serviceProperties[type]); //ToDo lowercase
+      _self.emit(type,_serviceProperties[type]);
     }
     logStatus();
   });
@@ -572,6 +572,12 @@ function hexToString(tmp) {
   }
   return str;
 }
+function upperCaseFirstLetter(string) {
+    return string.charAt(0).toUpperCase()+string.slice(1);
+}
+function lowerCaseFirstLetter(string) {
+    return string.charAt(0).toLowerCase()+string.slice(1);
+}
 function logStatus() {
   var techProps = _techProperties;
   var serviceProps = _serviceProperties;
@@ -585,7 +591,7 @@ function logStatus() {
     debug(connectionStatus);
   }
   if(techProps && techProps.tethering) {
-    debug('tethering: ',techProps.tetheringidentifier,techProps.tetheringpassphrase);
+    debug('tethering: ',techProps.tetheringIdentifier,techProps.tetheringPassphrase);
   }
 }
 function logNetworks(onChange) {
