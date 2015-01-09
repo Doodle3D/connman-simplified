@@ -19,8 +19,6 @@ var _available = false;
 var _networks = []; // current wifi services info (filtered by parseServices)
 var _techProperties = {}; // object containing all the wifi tech properties
 var _serviceProperties = {}; // object containing all the service properties (filtered by parseService)
-var _hotspotSSID;
-var _hotspotPassphrase;
 var _self;
 
 /** https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/service-api.txt
@@ -59,11 +57,9 @@ function WiFi(connman) {
 
 util.inherits(WiFi, EventEmitter);
 
-WiFi.prototype.init = function(hotspotSSID,hotspotPassphrase,callback) {
-  debug("init: ",hotspotSSID,hotspotPassphrase);
+WiFi.prototype.init = function(callback) {
+  debug("init: ");
   _self = this;
-  _hotspotSSID = hotspotSSID;
-  _hotspotPassphrase = hotspotPassphrase;
   // Retrieve WiFi technology
   // https://kernel.googlesource.com/pub/scm/network/connman/connman/+/1.14/doc/technology-api.txt
   _tech = _connman.technologies.WiFi;
@@ -370,22 +366,17 @@ WiFi.prototype.closeHotspot = function(callback) {
   });
 };
 WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
-  ssid               = ssid       || _hotspotSSID;
-  passphrase         = passphrase || _hotspotPassphrase;
-  _hotspotSSID       = ssid;
-  _hotspotPassphrase = passphrase;
-  debug("openHotspot: ",ssid,passphrase);
-  
-  // changing ssid or passphrase works while already hotspot? 
+  debug("openHotspot");
+  // changing ssid or passphrase works while already hotspot requires disable first
   // see: https://01.org/jira/browse/CM-668
-  _tech.enableTethering(ssid, passphrase, function(err, res) {
-    //debug("enableTethering response: ",err,res);
-    if(err && err.message === 'net.connman.Error.PassphraseRequired') {
-      err = new Error("Invalid password (passphrase must be at least 8 characters) (connman: "+err+")");
-    }
-    if(err) debug("[ERROR] openHotspot failed: ",err);
-    if (callback) callback(err);
-  });
+  var args = arguments;
+  if(_techProperties.tethering) {
+    _self.closeHotspot(function() {
+      _tech.enableTethering.apply(_tech,args);
+    });
+  } else {
+    _tech.enableTethering.apply(_tech,args);
+  }
 };
 WiFi.prototype.getAvailable = function() {
   return _available;

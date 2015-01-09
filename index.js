@@ -10,9 +10,6 @@ var ethernet;
 var wifi;
 var wifiNetworks;
 
-var hotspotSSID = "connmanTest";
-var hotspotPassphrase = "ultimaker";
-
 keypress(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.resume();
@@ -41,7 +38,7 @@ async.series([
   function initWiFi(next) {
     debug("initWiFi");
     wifi = new WiFi(connMan); 
-    wifi.init(hotspotSSID,hotspotPassphrase,function(err,properties) {
+    wifi.init(function(err,properties) {
       debug("wifi connected: ",properties.connected);
       debug("properties: ",properties);
       if(properties.connected) return next(); // already connected? 
@@ -99,7 +96,14 @@ process.stdin.on('keypress', function (ch, key) {
       });
       break;
     case 'o':
+    case '8':
       wifi.openHotspot();
+      break;
+    case '9':
+      wifi.openHotspot("myultimaker","ultimaker");
+      break;
+    case '0':
+      wifi.openHotspot("connmanTest","connmannpassword");
       break;
     case 'x':
       wifi.closeHotspot();
