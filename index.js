@@ -107,6 +107,9 @@ process.stdin.on('keypress', function (ch, key) {
     case 's':
       wifi.scan();
       break;
+    case 'r':
+      wifi.scan(true);
+      break;
     case 'g':
       wifi.getNetworks(function(err,list) {
         //debug("found networks: ",err,list);
@@ -120,6 +123,7 @@ process.stdin.on('keypress', function (ch, key) {
       break;
     case 'l':
       wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
+      debug("logNetworksOnChange: ",wifi.logNetworksOnChange);
       break;
   }
 });

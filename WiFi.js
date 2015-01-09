@@ -4,10 +4,11 @@ const async         = require('async');
 const fs            = require('fs');
 var util            = require("util");
 var EventEmitter    = require("events").EventEmitter;
+var ms              = require('ms');
 
 var _timeoutWiFiEnable = 3000;
-var _scanRetryTimeout = 5000;
-var _numScanRetries = 3;
+var _scanRetryTimeout = 1000; //5000;
+var _numScanRetries = 5; //3;
 var _getServiceRetryTimeout = _scanRetryTimeout;
 var _numGetServiceRetries = _numScanRetries;
 var _connman;
@@ -152,20 +153,42 @@ WiFi.prototype.getNetworks = function(callback) {
     });
   },callback);
 };
-WiFi.prototype.scan = function(callback) {
-  debug("scan");
-  if(_techProperties.tethering) {
+WiFi.prototype.scan = function(switchTethering,callback) {
+  if(typeof switchTethering == 'function') {
+    callback = switchTethering;
+    switchTethering = false;
+  }
+  debug("scan switchTethering: ",switchTethering);
+  
+  if(_techProperties.tethering && !switchTethering) {
     debug("[Warning] Scanning while in tethering mode is usually not supported");
   }
-  _tech.scan(function(err) {
-    if(err) {
-      debug("[Error] scanning: ",err);
-      if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
-        debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
+  
+  // Because our hardware can't scan and tether at the same time we 
+  // might need to switch off tethering, scan and start tethering again
+  // ToDo: research wheter it's possible to keep the hotspot clients connected
+  if(_techProperties.tethering && switchTethering) {
+    var startTime = Date.now();
+    _self.closeHotspot(function(err) {
+      _self.scan(function() { // ToDo: add retries?
+        logNetworks();
+        _self.openHotspot(null,null,function(err) {
+          debug('switchTethering time: ',ms(Date.now()-startTime));
+          if(callback) callback(err);
+        });
+      });
+    });
+  } else {
+    _tech.scan(function(err) {
+      if(err) {
+        debug("[Error] scanning: ",err);
+        if(err.message == 'org.freedesktop.DBus.Error.NoReply') {
+          debug("[Error] Scan failed, probably because I'm a hotspot / tethering");
+        }
       }
-    }
-    if(callback) callback(err);
-  });
+      if(callback) callback(err);
+    });
+  }
 };
 WiFi.prototype.join = function(ssid,passphrase,callback) {
   debug("join: ",ssid);
@@ -322,14 +345,15 @@ WiFi.prototype.disconnect = function(callback) {
 };
 WiFi.prototype.closeHotspot = function(callback) {
   debug("closeHotspot");
-  // monitor tech's property changed to know when tethering is disabled
-  function localTechOnProperyChanged(type,value) {
-    if(type == 'Tethering' && value === false) {
-      if(callback) callback();
-      _tech.removeListener('PropertyChanged',localTechOnProperyChanged);
-    }
+  // Having changing the Tethering property doesn't mean the hotspot is closed. 
+  // A better indicator is listening to Tethering and Powered property changes
+  // The Tethering changes to false, Powered is set to true (maybe the device restarts?)
+  // But the best indicator seems to wait for the available services to change.
+  function onChange(changes,removed) {
+    if(callback) callback();
+    _connman.removeListener('ServicesChanged',onChange);
   }
-  _tech.on('PropertyChanged',localTechOnProperyChanged);
+  _connman.on('ServicesChanged',onChange);
   
   _tech.disableTethering(function(err, res) {
     //verbose("disableTethering response: ",err,res);
@@ -339,7 +363,7 @@ WiFi.prototype.closeHotspot = function(callback) {
         debug('[NOTE] Hotspot already closed');
         err = null;
       } 
-      _tech.removeListener('PropertyChanged',localTechOnProperyChanged);
+      _connman.removeListener('ServicesChanged',onChange);
       if (callback) callback(err);
       return;
     }
