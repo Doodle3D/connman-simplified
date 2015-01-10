@@ -17,6 +17,7 @@ var _service; // service we are connected to
 var _agent;
 var _available = false;
 var _networks = []; // current wifi services info (filtered by parseServices)
+var _networksCache = []; // cache of networks, use while tethering
 var _techProperties = {}; // object containing all the wifi tech properties
 var _serviceProperties = {}; // object containing all the service properties (filtered by parseService)
 var _self;
@@ -148,6 +149,10 @@ WiFi.prototype.getNetworks = function(callback) {
       });
     });
   },callback);
+};
+WiFi.prototype.getNetworksCache = function(callback) {
+  debug("getNetworksCache");
+  callback(null, _networksCache);
 };
 WiFi.prototype.scan = function(switchTethering,callback) {
   if(typeof switchTethering == 'function') {
@@ -474,6 +479,10 @@ function setService(service) {
 function setNetworks(networks,onchange) {
   _networks = networks;
   logNetworks(onchange);
+  if(!_techProperties.tethering) {
+    _networksCache = _networks;
+    debug("networksCache: ",_networksCache);
+  }  
   // emit networks list as array
   var networksArr = [];
   for (var key in _networks) {
