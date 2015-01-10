@@ -92,7 +92,7 @@ WiFi.prototype.init = function(callback) {
   _tech.getServices(function(err,services) {
     //debug("_connman.getServices respone: ",arguments);
     if(err) return debug("[Warning] Coulnd't get current services: ",err);
-    setNetworks(parseServices(services),false);
+    setNetworks(parseServices(services));
   });
   // Monitor current service (network) 
   getCurrentService(function(err,service) {
@@ -144,7 +144,7 @@ WiFi.prototype.getNetworks = function(callback) {
         if(Object.keys(services).length === 0) {
           return setTimeout(nextRetry, _scanRetryTimeout, new Error('No WiFi networks found'));
         }
-        setNetworks(parseServices(services),false);
+        setNetworks(parseServices(services));
         callback(null, _networks);
       });
     });
@@ -371,7 +371,7 @@ WiFi.prototype.closeHotspot = function(callback) {
   });
 };
 WiFi.prototype.openHotspot = function(ssid,passphrase,callback) {
-  debug("openHotspot");
+  debug("openHotspot");  
   // changing ssid or passphrase works while already hotspot requires disable first
   // see: https://01.org/jira/browse/CM-668
   var args = arguments;
@@ -403,7 +403,7 @@ function onServicesChanged(changes,removed) {
   // Future: emit per added network a networkAdded event
   
   _tech.getServices(function(err,services) {
-    setNetworks(parseServices(services),true);
+    setNetworks(parseServices(services),_self.logNetworksOnChange);
   });
 }
 function onTechPropertyChanged(type, value) {
@@ -476,12 +476,13 @@ function setService(service) {
   _service.on('PropertyChanged', onServicePropertyChanged);
   // ToDo: broadcast event? 
 }
-function setNetworks(networks,onchange) {
+function setNetworks(networks,log) {
   _networks = networks;
-  logNetworks(onchange);
+  if(log === undefined) log = true;
+  if(log) logNetworks();
   if(!_techProperties.tethering) {
     _networksCache = _networks;
-    debug("networksCache: ",_networksCache);
+    //debug("networksCache: ",_networksCache);
   }  
   // emit networks list as array
   var networksArr = [];
@@ -603,8 +604,7 @@ function logStatus() {
     debug('tethering: ',techProps.tetheringIdentifier,techProps.tetheringPassphrase);
   }
 }
-function logNetworks(onChange) {
-  if(onChange && !_self.logNetworksOnChange) return;
+function logNetworks() {
   var states = {online: 'O', 
                  ready: 'R', 
                  association: 'a', 
