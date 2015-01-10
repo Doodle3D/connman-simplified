@@ -33,7 +33,10 @@ async.series([
   function initEthernet(next) {
     debug("initEthernet");
     ethernet = new Ethernet(connMan);
-    ethernet.init(next);
+    ethernet.init(function(err) {
+      if(err) debug("[ERROR] init wifi: ",err);
+    });
+    next();
   },
   function initWiFi(next) {
     debug("initWiFi");
