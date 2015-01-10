@@ -123,6 +123,11 @@ process.stdin.on('keypress', function (ch, key) {
         if(err) debug("[ERROR] get networks: ",err);
       });
       break;
+    case 'h':
+      wifi.getNetworksCache(function(err,list) {
+        debug("found cached networks: ",err || '',list);
+      });
+      break;
     case 'i':
       wifi.getConnectionProperties(function(err,properties) {
         if(err) debug("[ERROR] get connection properties: ",err);
