@@ -98,6 +98,11 @@ process.stdin.on('keypress', function (ch, key) {
         if(err) debug("[Error] disconnect error: ",err);
       });
       break;
+    case 'q':
+      wifi.forgetNetwork('Vechtclub XL F1.19',function(err) {
+        if(err) debug("forgetNetwork err: ",err);
+      });
+      break;
     case 'o':
     case '8':
       wifi.openHotspot();

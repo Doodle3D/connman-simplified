@@ -344,6 +344,18 @@ WiFi.prototype.disconnect = function(callback) {
     });
   });
 };
+WiFi.prototype.forgetNetwork = function(ssid,callback) {
+  debug('forgetNetwork: ',ssid);
+  
+  getServiceBySSID(ssid,function(err,service) {
+    if(err) {
+      if(callback) callback(err); 
+      return;
+    }
+    if (service) service.remove();
+  });
+  deletePassphrase(ssid,callback);
+};
 WiFi.prototype.closeHotspot = function(callback) {
   debug("closeHotspot");
   // Having changing the Tethering property doesn't mean the hotspot is closed. 
@@ -562,6 +574,28 @@ function storePassphrase (ssid, passphrase, callback) {
     });
   });
 }
+function deletePassphrase(ssid, callback) {
+  // get connection and remove it's connman file in /var/lib/connman
+  var ssidHex = stringToHex(ssid);
+  var pathConfig = '/var/lib/connman/network-' + ssidHex + '.config';
+  fs.exists(pathConfig, function(exists) {
+    if (exists) {
+      fs.unlink(pathConfig, function(err) {
+        if (err) {
+          debug('FS UNLINK Error: ' + err);
+          if (callback) callback(err);
+          return;
+        }
+        // config settings folder automatically removed by connman
+        debug('removed favorite network: ' + ssid);
+        if (callback) callback(null, {message: 'removed favorite network ' + ssid});
+      });
+    } else {
+      debug('removed favorite open network (set favorite to false): ' +ssid);
+      if (callback) callback(null, {message: 'remove favorite open network (set favorite to false) ' + ssid});
+    }
+  });
+};
 function stringToHex(tmp) {
   function d2h(d) {
     return d.toString(16);
