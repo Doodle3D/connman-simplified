@@ -505,13 +505,14 @@ function setNetworks(networks,log) {
 }
 function getCurrentService(callback) {
   _tech.searchService({State:['ready','online']},function(err,service,serviceData) {
-    callback(err, service, parseService(serviceData)); 
+    if(err) callback(err); 
+    else callback(err, service, parseService(serviceData)); 
   });
 }
 function getServiceBySSID(ssid,callback) {
-  debug("getService: ",ssid);
   _tech.searchService({Name:ssid},function(err,service,serviceData) {
-    callback(err, service, parseService(serviceData)); 
+    if(err) callback(err); 
+    else callback(null, service, parseService(serviceData)); 
   });
 }
 function storePassphrase (ssid, passphrase, callback) {
