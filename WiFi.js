@@ -504,46 +504,14 @@ function setNetworks(networks,log) {
   _self.emit('networks',networksArr);
 }
 function getCurrentService(callback) {
-  _tech.getServices(function(err, services) {
-    var connectedServiceName;
-    for(var serviceName in services){
-      var serviceData = services[serviceName];
-      if(serviceData.State === 'ready' || serviceData.State === 'online') {
-        connectedServiceName = serviceName;
-        break;
-      }
-    }
-    if(!connectedServiceName) {
-      return callback(new Error("Not connected to any wifi services"));
-    }
-    //debug("connectedServiceName: ",serviceName);
-    _connman.getService(connectedServiceName, function(err, service) {
-      _service = service;
-      callback(err,service);
-    });
+  _tech.searchService({State:['ready','online']},function(err,service,serviceData) {
+    callback(err, service, parseService(serviceData)); 
   });
 }
 function getServiceBySSID(ssid,callback) {
   debug("getService: ",ssid);
-  _tech.getServices(function(err, services) {
-    if(err) return callback(err);
-    var serviceName;
-    var serviceData;
-    for(var key in services) {
-      if(services[key].Name == ssid) {
-        serviceName = key;
-        serviceData = parseService(services[serviceName]);
-        debug("found network '"+ssid+"'");
-        break;
-      }
-    }
-    if (!serviceData) {
-      return callback(new Error("Network '"+ssid+"' not found"));
-    }
-    _connman.getService(serviceName, function(err, service) {
-      //debug("retrieved service: ",serviceData.serviceName,err);
-      callback(err,service,serviceData); 
-    });
+  _tech.searchService({Name:ssid},function(err,service,serviceData) {
+    callback(err, service, parseService(serviceData)); 
   });
 }
 function storePassphrase (ssid, passphrase, callback) {
