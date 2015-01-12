@@ -9,8 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "connman-api": "git+https://github.com/Doodle3D/connman-api.git",
     "debug": "^2.1.0",
-    "jsdx-connman": "git+https://github.com/Doodle3D/jsdx-connman.git",
     "keypress": "^0.2.1",
     "ms": "^0.7.0"
   }
