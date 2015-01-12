@@ -1,7 +1,7 @@
 const debug = require('debug')('connman-tests:ethernet');
 const async = require('async');
 
-var _connMan;
+var _connman;
 var _tech;
 var _service;
 var _available = false;
@@ -22,11 +22,11 @@ const ETHERNET_STATES = {
 };
 
 function Ethernet(connMan) {
-  _connMan = connMan;
+  _connman = connMan;
 }
 
 Ethernet.prototype.init = function(callback) {
-  _tech = _connMan.technologies.Wired;
+  _tech = _connman.technologies.Wired;
   
   async.series([
     function(next) {
@@ -40,23 +40,22 @@ Ethernet.prototype.init = function(callback) {
         if(err) return next(err); 
         if(Object.keys(services).length === 0) return next(new Error("No ethernet service available"));
         _available = true;
-        //debug('found ethernet services: ' + Object.keys(services));
-        async.eachSeries(Object.keys(services), function(serviceName,eachNext) {
-          //debug('get ethernet service: ' + serviceName);
-          _connMan.getService(serviceName, function(err, service) {
+        //debug('found ethernet services: ', Object.keys(services));
+        var serviceName = Object.keys(services)[0];
+        //debug('get ethernet service: ' + serviceName);
+        _connman.getService(serviceName, function(err, service) {
+          if(err) return next(err); 
+          //debug('wired getConnection response: ',err/*,connection*/);
+          _service = service;
+          _service.getProperties(function(err, props) {
             if(err) return next(err); 
-            //debug('wired getConnection response: ',err/*,connection*/);
-            _service = service;
-            _service.getProperties(function(err, props) {
-              if(err) return next(err); 
-              //debug('wired service \''+serviceName+'\' properties: ',err,props);
-              //debug('wired service \''+serviceName+'\' state: ',props.State);
-              debug('State: ',props.State);
-              next(err,props);
-            });
-            _service.on('PropertyChanged', function(name, value) {
-              debug(name,'changed:',value);
-            });
+            //debug('wired service \''+serviceName+'\' properties: ',err,props);
+            //debug('wired service \''+serviceName+'\' state: ',props.State);
+            debug('State: ',props.State);
+            next(err,props);
+          });
+          _service.on('PropertyChanged', function(name, value) {
+            debug(name,'changed:',value);
           });
         });
       })
