@@ -1,4 +1,4 @@
-var debug     = require('debug')('connman-tests');
+var debug     = require('debug')('example');
 var async     = require('async');
 var keypress  = require('keypress');
 var Connman   = require('../lib'); // connman-simplified
@@ -6,6 +6,7 @@ var connman   = Connman();
 
 var ethernet;
 var wifi;
+var logNetworksOnChange = false; 
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
@@ -49,8 +50,13 @@ async.series([
   debug("start seq finished: ",err || '');
   
   connman.on('state',function(value) {
-    debug("Overall state change: ",value);
+    debug("Overall state: ",value);
   });
+  connman.on('networks',function(list) {
+    if(!logNetworksOnChange) return;
+    debug("Networks: ",connman.getServicesString(list));
+  });
+  
   wifi.on('state',function(value) {
     debug("WiFi state change: ",value);
     if(value === Connman.WiFi.WIFI_STATES.FAILURE) {
@@ -135,6 +141,9 @@ process.stdin.on('keypress', function (ch, key) {
       });
       break;
     case 'l':
-      wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
-      debug("logNetworksOnChange: ",wifi.logNetworksOnChange);
+      //wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
+      logNetworksOnChange = !logNetworksOnChange;
+      debug("logNetworksOnChange: ",logNetworksOnChange);
       break;
+  }
+});
