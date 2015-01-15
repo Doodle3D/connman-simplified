@@ -119,6 +119,11 @@ process.stdin.on('keypress', function (ch, key) {
     case 'i':
       wifi.getConnectionProperties(function(err,properties) {
         if(err) debug("[ERROR] get connection properties: ",err);
+        debug("connection properties: ",properties);
+      });
+      wifi.getProperties(function(err,properties) {
+        if(err) debug("[ERROR] get properties: ",err);
+        debug("properties: ",properties);
       });
       break;
     case 'l':
