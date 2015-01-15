@@ -1,28 +1,21 @@
-const ConnMan = require('jsdx-connman');
-const debug = require('debug')('connman-tests');
-const async = require('async');
-const Ethernet = require('./Ethernet');
-const WiFi = require('./WiFi');
-const keypress = require('keypress');
+var debug     = require('debug')('connman-tests');
+var async     = require('async');
+var keypress  = require('keypress');
+var Connman   = require('../lib'); // connman-simplified
+var connman   = Connman();
 
-var connMan;
 var ethernet;
 var wifi;
-var wifiNetworks;
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.resume();
 
 async.series([
-  function initConnMan(next) {
-    //NOTE: Network.js DBUS needs environment vars below
-    //from: http://stackoverflow.com/questions/8556777/dbus-php-unable-to-launch-dbus-daemon-without-display-for-x11  
-    process.env.DBUS_SESSION_BUS_ADDRESS = 'unix:path=/run/dbus/system_bus_socket';
-    process.env.DISPLAY = ':0';
-    connMan = new ConnMan();
+  function initConnman(next) {
+    
     debug('initializing connman...');
-    connMan.init(function(err) {
+    connman.init(function(err) {
       if (err) {
         debug('[ERROR] connman init: ',err);
         return;
@@ -32,16 +25,17 @@ async.series([
   },
   function initEthernet(next) {
     debug("initEthernet");
-    ethernet = new Ethernet(connMan);
-    ethernet.init(function(err) {
-      if(err) debug("[ERROR] init wifi: ",err);
+    connman.initEthernet(function(err,newEthernet,properties) {
+      if(err) return debug("[ERROR] init ethernet: ",err);
+      debug("ethernet properties: ",properties);
+      ethernet = newEthernet;
     });
     next();
   },
   function initWiFi(next) {
     debug("initWiFi");
-    wifi = new WiFi(connMan); 
-    wifi.init(function(err,properties) {
+    connman.initWiFi(function(err,newWiFi,properties) {
+      wifi = newWiFi;
       debug("wifi connected: ",properties.connected);
       debug("properties: ",properties);
       if(properties.connected) return next(); // already connected? 
@@ -54,10 +48,12 @@ async.series([
 ],function(err) {
   debug("start seq finished: ",err || '');
   
-  // ToDo: open hotspot on connection issues
-  wifi.on('State',function(value) {
-    debug("WiFi State change: ",value);
-    if(value === WiFi.WIFI_STATES.FAILURE) {
+  connman.on('state',function(value) {
+    debug("Overall state: ",value);
+  });
+  wifi.on('state',function(value) {
+    debug("WiFi state change: ",value);
+    if(value === Connman.WiFi.WIFI_STATES.FAILURE) {
       wifi.openHotspot();
     }
   }); 
@@ -117,21 +113,21 @@ process.stdin.on('keypress', function (ch, key) {
       wifi.closeHotspot();
       break;
     case 's':
-      wifi.scan();
-      break;
-    case 'r':
-      wifi.scan(true);
+			if(key.shift) wifi.scan(true);
+			else wifi.scan();
       break;
     case 'g':
-      wifi.getNetworks(function(err,list) {
-        //debug("found networks: ",err,list);
-        if(err) debug("[ERROR] get networks: ",err);
-      });
-      break;
-    case 'h':
-      wifi.getNetworksCache(function(err,list) {
-        debug("found cached networks: ",err || '',list);
-      });
+			if(key.shift) {
+				wifi.getNetworksCache(function(err,list) {
+					if(err) return debug("[ERROR] get networks cache: ",err);
+					debug("found cached networks: ",wifi.getServicesString(list));
+				});
+			} else {
+				wifi.getNetworks(function(err,list) {
+					if(err) return debug("[ERROR] get networks: ",err);
+					debug("found networks: ",wifi.getServicesString(list));
+				});
+			}
       break;
     case 'i':
       wifi.getConnectionProperties(function(err,properties) {

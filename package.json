@@ -1,17 +1,33 @@
 {
-  "name": "connman-tests",
+  "name": "connman-simplified",
   "version": "0.0.0",
   "description": "",
-  "main": "index.js",
+  "keywords": [
+    "internet",
+    "connman",
+    "client",
+    "connection manager",
+    "network",
+    "api", 
+    "managment"
+  ],
+  "main": "./lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Peter Uithoven",
+    "email": "peter@peteruithoven.nl"
+  },
+  "license": "MIT",
   "dependencies": {
     "connman-api": "git+https://github.com/Doodle3D/connman-api.git",
     "debug": "^2.1.0",
     "keypress": "^0.2.1",
     "ms": "^0.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Doodle3D/connman-simplified.git"
   }
 }
