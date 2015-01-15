@@ -1,9 +1,9 @@
-Connman-simplified
+Connman simplified
 ===================
 
 Node.js package that simplifies Connman (Opensource connection manager) usage. <br/>
-Enables you to easilly control connections over wifi and ethernet. Get realtime status changes. 
-Uses Connman-api internally.<br/>
+Enables you to easilly control connections over wifi and ethernet. Get realtime status changes. <br/>
+Uses [Connman-api package](https://www.npmjs.com/package/connman-api) internally.<br/>
 Connman: http://www.connman.net/
 
 - Abstracts Connman API making your code shorter and simpler.
@@ -18,7 +18,7 @@ var connman = require('connman-simplified')();
 connman.init(function(err) {
   connman.initWiFi(function(err,wifi,properties) {
   
-    if(!properties.connected) { // already connected?
+    if(!properties.connected) { // not yet connected? 
       wifi.joinFavorite(function(err) {
         if(err) wifi.openHotspot();
       });
@@ -37,6 +37,7 @@ connman.init(function(err) {
   connman.initWiFi(function(err,wifi,properties) {
   
     wifi.join("myhomenetwork",'myPassphrase');
+    
     setTimeout(function() {
       wifi.disconnect();
     },5000);
@@ -52,20 +53,35 @@ connman.init(function(err) {
   connman.initWiFi(function(err,wifi,properties) {
     
     wifi.openHotspot("myhotspot","aPassphrase",function(err) {
-      // get cached available networks
+      // get cached available networks (collected earlier)
       wifi.getNetworksCache(function(err,list) {
         console.log("networks from cache: ",list);
       });
+      
       setTimeout(function() {
         wifi.closeHotspot(function(err) {
           // get fresh available networks
           wifi.getNetworks(function(err,list) {
             console.log("networks: ",list);
-            // better readable log using getServicesString:
-            console.log("networks: ",wifi.getServicesString(list));
           });
         });
       },5000);
+    });
+    
+  });
+});
+```
+
+Get a more readable networks list. <br/>
+Uses common Connman services format, see: https://01.org/connman/documentation
+``` javascript
+var connman = require('connman-simplified')();
+connman.init(function(err) {
+  connman.initWiFi(function(err,wifi,properties) {
+    
+    wifi.getNetworks(function(err,list) {
+      // get more readable list using getServicesString:
+      console.log("networks: ",wifi.getServicesString(list));
     });
     
   });
@@ -75,7 +91,7 @@ Bigger interactive example is included.
 
 Debugging
 ------------
-Uses [Debug module](https://www.npmjs.com/package/debug), to see all logs run: 
+Uses [Debug package](https://www.npmjs.com/package/debug), to see all logs run: 
 ```
 $export DEBUG=*
 ```

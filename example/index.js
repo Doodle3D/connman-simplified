@@ -49,7 +49,7 @@ async.series([
   debug("start seq finished: ",err || '');
   
   connman.on('state',function(value) {
-    debug("Overall state: ",value);
+    debug("Overall state change: ",value);
   });
   wifi.on('state',function(value) {
     debug("WiFi state change: ",value);
@@ -138,5 +138,3 @@ process.stdin.on('keypress', function (ch, key) {
       wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
       debug("logNetworksOnChange: ",wifi.logNetworksOnChange);
       break;
-  }
-});
