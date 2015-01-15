@@ -16,6 +16,7 @@ process.stdin.resume();
 retrieveEnvVars();
 
 console.log("Use $DEBUG=* for all logs");
+debug(getHelpText());
 
 async.series([
   function initConnman(next) {
@@ -29,20 +30,18 @@ async.series([
     });
   },
   function initEthernet(next) {
-    debug("initEthernet");
     connman.initEthernet(function(err,newEthernet,properties) {
       if(err) return debug("[ERROR] init ethernet: ",err);
-      debug("ethernet properties: ",properties);
+      //debug("ethernet properties: ",properties);
       ethernet = newEthernet;
     });
     next();
   },
   function initWiFi(next) {
-    debug("initWiFi");
     connman.initWiFi(function(err,newWiFi,properties) {
       wifi = newWiFi;
       debug("wifi connected: ",properties.connected);
-      debug("properties: ",properties);
+      //debug("properties: ",properties);
       if(properties.connected) return next(); // already connected? 
       wifi.joinFavorite(function(err) {
         if(err) wifi.openHotspot(null,null,next);
@@ -173,7 +172,6 @@ function retrieveEnvVars() {
       targetNetworks[index] = value.split(':');
     }
   }
-  debug("Target networks: ",targetNetworks);
 }
 
 function getHelpText() {
