@@ -126,6 +126,10 @@ process.stdin.on('keypress', function (ch, key) {
       logNetworksOnChange = !logNetworksOnChange;
       debug("logNetworksOnChange: ",logNetworksOnChange);
       break;
+    case '?':
+      //wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
+      debug(getHelpText());
+      break;
   }
   if(key === undefined) {
     // join or forget one of the target networks using number keys
@@ -165,4 +169,29 @@ function retrieveEnvVars() {
     }
   }
   debug("Target networks: ",targetNetworks);
+}
+
+function getHelpText() {
+  var help = '\nHelp: ';
+  help += '\n f: Join a favorite network';
+  help += '\n d: Disconnect from current';
+  help += '\n o: Open hotspot';
+  help += '\n x: Close hotspot';
+  help += '\n s: Scan for networks';
+  help += '\n shift+s: Scan for networks (switchTethering)';
+  help += '\n g: Get networks';
+  help += '\n shift+g: Get cached networks';
+  help += '\n i: Get connection info';
+  help += '\n l: Toggle log networks on change';
+  help += '\n ?: Get help';
+  
+  for(var i=1;i<targetNetworks.length;i++) {
+    var targetNetwork = targetNetworks[i];
+    help += '\n '+i+': Join: '+targetNetwork;
+  }
+  for(i=1;i<targetNetworks.length;i++) {
+    var targetNetwork = targetNetworks[i];
+    help += '\n shift+'+i+': Forget: '+targetNetwork;
+  }
+  return help;
 }
