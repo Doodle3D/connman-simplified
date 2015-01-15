@@ -6,15 +6,19 @@ var connman   = Connman();
 
 var ethernet;
 var wifi;
+var targetNetworks = [];
 var logNetworksOnChange = false; 
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.resume();
 
+retrieveEnvVars();
+
+console.log("Use $DEBUG=* for all logs");
+
 async.series([
   function initConnman(next) {
-    
     debug('initializing connman...');
     connman.init(function(err) {
       if (err) {
@@ -73,24 +77,7 @@ process.stdin.on('keypress', function (ch, key) {
   debug(keyName+" > ");
   switch(keyName) {
     case 'c':
-    case '1':
-      if(keyName === 'c' && key.ctrl) process.exit(1);
-      else wifi.join("Vechtclub XL F1.19",'groentegorilla');
-      break;
-    case '2':
-      wifi.join("Vechtclub XL F1.19",'wrongpassword');
-      break;
-    case '3':
-      wifi.join("hss","wrongpassword");
-      break;
-    case '4':
-      wifi.join("hss");
-      break;
-    case '5':
-      wifi.join("wrongnetwork",'wrongpassword');
-      break;
-    case '6':
-      wifi.join("Doodle3D-wisp");
+      if(key.ctrl) process.exit(1);
       break;
     case 'f': 
       wifi.joinFavorite();
@@ -100,26 +87,20 @@ process.stdin.on('keypress', function (ch, key) {
         if(err) debug("[Error] disconnect error: ",err);
       });
       break;
-    case 'q':
-      wifi.forgetNetwork('Vechtclub XL F1.19',function(err) {
-        if(err) debug("forgetNetwork err: ",err);
-      });
-      break;
     case 'o':
-    case '8':
       wifi.openHotspot();
       break;
     case '9':
-      wifi.openHotspot("myultimaker","ultimaker");
+      wifi.openHotspot("myhotspot","myPassphrase");
       break;
     case '0':
-      wifi.openHotspot("connmanTest","connmannpassword");
+      wifi.openHotspot("My alternative hotspot","myAlternativePassphrase");
       break;
     case 'x':
       wifi.closeHotspot();
       break;
     case 's':
-			if(key.shift) wifi.scan(true);
+			if(key.shift) wifi.scan(true); // switchTether
 			else wifi.scan();
       break;
     case 'g':
@@ -146,4 +127,42 @@ process.stdin.on('keypress', function (ch, key) {
       debug("logNetworksOnChange: ",logNetworksOnChange);
       break;
   }
+  if(key === undefined) {
+    // join or forget one of the target networks using number keys
+    var joinTargetIndex = parseInt(ch);
+    if(!isNaN(joinTargetIndex)) { // number key? 
+      var network = targetNetworks[joinTargetIndex];
+      debug('join network '+joinTargetIndex+': ',network);
+      wifi.join.apply(wifi,network); 
+    }
+    var forgetTargetIndex = ' !@#$%^&*('.indexOf(ch);
+    if(forgetTargetIndex !== -1) {
+      var network = targetNetworks[forgetTargetIndex];
+      debug('forget network '+forgetTargetIndex+': ',network);
+      wifi.forgetNetwork(network[0],function(err) {
+        if(err) debug("forgetNetwork err: ",err);
+      });
+    }
+  }
 });
+
+/* Retrieve target networks from environment variables. Tip: add them to your ~/.bash_profile
+ * Example: 
+ * export WIFI_1='myfirstnetwork:thecorrectpassphrase'
+ * export WIFI_2='myfirstnetwork:wrongpassphrase'
+ * export WIFI_3='anothernetwork:wrongpassword'
+ * export WIFI_4='anothernetwork'
+ * export WIFI_5='unsecurednetwork'
+ * export WIFI_6='wrongnetwork:wrongpassword'
+ */
+function retrieveEnvVars() {
+  var env = process.env;
+  for(var key in env) {
+    var value = env[key];
+    if(key.indexOf('WIFI') === 0) {
+      var index = parseInt(key.charAt(5));
+      targetNetworks[index] = value.split(':');
+    }
+  }
+  debug("Target networks: ",targetNetworks);
+}
