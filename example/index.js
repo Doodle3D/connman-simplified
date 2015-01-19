@@ -92,13 +92,9 @@ process.stdin.on('keypress', function (ch, key) {
       });
       break;
     case 'o':
-      wifi.openHotspot();
-      break;
-    case '9':
-      wifi.openHotspot("myhotspot","myPassphrase");
-      break;
-    case '0':
-      wifi.openHotspot("My alternative hotspot","myAlternativePassphrase");
+      if(key.shift) wifi.openHotspot("myHotspot","123",debug); // invalid passphrase
+      else if(key.ctrl) wifi.openHotspot("myhotspot","myPassphrase");
+      else wifi.openHotspot();
       break;
     case 'x':
       wifi.closeHotspot();
