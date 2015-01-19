@@ -34,6 +34,9 @@ async.series([
       if(err) return debug("[ERROR] init ethernet: ",err);
       //debug("ethernet properties: ",properties);
       ethernet = newEthernet;
+      ethernet.on('state',function(value) {
+        debug("Ethernet state: ",value);
+      });
     });
     next();
   },
@@ -122,7 +125,11 @@ process.stdin.on('keypress', function (ch, key) {
       });
       wifi.getProperties(function(err,properties) {
         if(err) debug("[ERROR] get properties: ",err);
-        debug("properties: ",properties);
+        debug("wifi properties: ",properties);
+      });
+      ethernet.getProperties(function(err,properties) {
+        if(err) debug("[ERROR] get properties: ",err);
+        debug("ethernet properties: ",properties);
       });
       break;
     case 'l':
