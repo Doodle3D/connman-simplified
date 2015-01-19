@@ -54,6 +54,7 @@ async.series([
   }
 ],function(err) {
   debug("start seq finished: ",err || '');
+  if(err) return; 
   
   connman.on('state',function(value) {
     debug("Overall state: ",value);
@@ -62,7 +63,6 @@ async.series([
     if(!logNetworksOnChange) return;
     debug("Networks: ",connman.getServicesString(list));
   });
-  
   wifi.on('state',function(value) {
     debug("WiFi state change: ",value);
     if(value === Connman.WiFi.WIFI_STATES.FAILURE) {
