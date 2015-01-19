@@ -15,7 +15,9 @@ process.stdin.resume();
 
 retrieveEnvVars();
 
-console.log("Use $DEBUG=* for all logs");
+if(!process.env.DEBUG) {
+  console.log("Use $DEBUG=* to view all logs");
+}
 debug(getHelpText());
 
 async.series([
