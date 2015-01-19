@@ -67,7 +67,7 @@ async.series([
   });
   wifi.on('state',function(value) {
     debug("WiFi state change: ",value);
-    if(value === Connman.WiFi.WIFI_STATES.FAILURE) {
+    if(value === Connman.WiFi.STATES.FAILURE) {
       wifi.openHotspot();
     }
   }); 
