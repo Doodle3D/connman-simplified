@@ -71,6 +71,9 @@ async.series([
       wifi.openHotspot();
     }
   }); 
+  wifi.on('ssid',function(value) {
+    debug("WiFi ssid change: ",value);
+  });
 });
 
 // listen for the "keypress" event
@@ -117,13 +120,13 @@ process.stdin.on('keypress', function (ch, key) {
 			}
       break;
     case 'i':
-      wifi.getConnectionProperties(function(err,properties) {
-        if(err) debug("[ERROR] get connection properties: ",err);
-        debug("connection properties: ",properties);
-      });
       wifi.getProperties(function(err,properties) {
         if(err) debug("[ERROR] get properties: ",err);
         debug("wifi properties: ",properties);
+      });
+      wifi.getConnectionProperties(function(err,properties) {
+        if(err) debug("[ERROR] get connection properties: ",err);
+        debug("wifi connection properties: ",properties);
       });
       ethernet.getProperties(function(err,properties) {
         if(err) debug("[ERROR] get properties: ",err);
@@ -131,12 +134,10 @@ process.stdin.on('keypress', function (ch, key) {
       });
       break;
     case 'l':
-      //wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
       logNetworksOnChange = !logNetworksOnChange;
       debug("logNetworksOnChange: ",logNetworksOnChange);
       break;
     case '?':
-      //wifi.logNetworksOnChange = !wifi.logNetworksOnChange;
       debug(getHelpText());
       break;
   }
