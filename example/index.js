@@ -68,6 +68,7 @@ async.series([
   wifi.on('state',function(value) {
     debug("WiFi state change: ",value);
     if(value === Connman.WiFi.STATES.FAILURE) {
+      debug('WiFi connection failed, become hotspot');
       wifi.openHotspot();
     }
   }); 
@@ -120,18 +121,10 @@ process.stdin.on('keypress', function (ch, key) {
 			}
       break;
     case 'i':
-      wifi.getProperties(function(err,properties) {
-        if(err) debug("[ERROR] get properties: ",err);
-        debug("wifi properties: ",properties);
-      });
-      wifi.getConnectionProperties(function(err,properties) {
-        if(err) debug("[ERROR] get connection properties: ",err);
-        debug("wifi connection properties: ",properties);
-      });
-      ethernet.getProperties(function(err,properties) {
-        if(err) debug("[ERROR] get properties: ",err);
-        debug("ethernet properties: ",properties);
-      });
+      debug("wifi properties: ",wifi.getProperties());
+      debug("wifi connection properties: ",wifi.getConnectionProperties());
+      debug("ethernet properties: ",ethernet.getProperties());
+      debug("ethernet connection properties: ",ethernet.getConnectionProperties());
       break;
     case 'l':
       logNetworksOnChange = !logNetworksOnChange;
