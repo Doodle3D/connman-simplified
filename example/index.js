@@ -22,12 +22,20 @@ debug(getHelpText());
 
 async.series([
   function initConnman(next) {
-    debug('initializing connman...');
     connman.init(function(err) {
-      if (err) {
-        debug('[ERROR] connman init: ',err);
-        return;
-      }
+      if (err) return next(err);
+      connman.on('state',function(value) {
+        debug("Overall state: ",value);
+      });
+      // log the current services once
+      connman.once('networks',function(list) {
+        debug("Networks: ",connman.getServicesString(list));
+      });
+      // log the services on change 
+      connman.on('networks',function(list) {
+        if(!logNetworksOnChange) return;
+        debug("Networks: ",connman.getServicesString(list));
+      });
       next();
     });
   },
@@ -44,9 +52,21 @@ async.series([
   },
   function initWiFi(next) {
     connman.initWiFi(function(err,newWiFi,properties) {
+      if(err) next(err); 
       wifi = newWiFi;
       debug("wifi connected: ",properties.connected);
-      //debug("properties: ",properties);
+      
+      wifi.on('state',function(value) {
+        debug("WiFi state change: ",value);
+        if(value === Connman.WiFi.STATES.FAILURE) {
+          debug('WiFi connection failed, become hotspot');
+          wifi.openHotspot();
+        }
+      }); 
+      wifi.on('ssid',function(value) {
+        debug("WiFi ssid change: ",value);
+      });
+      
       if(properties.connected) return next(); // already connected? 
       wifi.joinFavorite(function(err) {
         if(err) wifi.openHotspot(null,null,next);
@@ -57,24 +77,6 @@ async.series([
 ],function(err) {
   debug("start seq finished: ",err || '');
   if(err) return; 
-  
-  connman.on('state',function(value) {
-    debug("Overall state: ",value);
-  });
-  connman.on('networks',function(list) {
-    if(!logNetworksOnChange) return;
-    debug("Networks: ",connman.getServicesString(list));
-  });
-  wifi.on('state',function(value) {
-    debug("WiFi state change: ",value);
-    if(value === Connman.WiFi.STATES.FAILURE) {
-      debug('WiFi connection failed, become hotspot');
-      wifi.openHotspot();
-    }
-  }); 
-  wifi.on('ssid',function(value) {
-    debug("WiFi ssid change: ",value);
-  });
 });
 
 // listen for the "keypress" event
