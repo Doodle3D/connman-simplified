@@ -127,6 +127,7 @@ process.stdin.on('keypress', function (ch, key) {
       debug("wifi connection properties: ",wifi.getConnectionProperties());
       debug("ethernet properties: ",ethernet.getProperties());
       debug("ethernet connection properties: ",ethernet.getConnectionProperties());
+      debug("current services: ",connman.getServicesString(connman.getCurrentServices()));
       break;
     case 'l':
       logNetworksOnChange = !logNetworksOnChange;
