@@ -42,7 +42,7 @@ async.series([
   function initEthernet(next) {
     connman.initEthernet(function(err,newEthernet,properties) {
       if(err) return debug("[ERROR] init ethernet: ",err);
-      //debug("ethernet properties: ",properties);
+      debug("ethernet properties: ",properties);
       ethernet = newEthernet;
       ethernet.on('state',function(value) {
         debug("Ethernet state: ",value);
@@ -123,6 +123,7 @@ process.stdin.on('keypress', function (ch, key) {
 			}
       break;
     case 'i':
+      debug("connman properties: ",connman.getProperties());
       debug("wifi properties: ",wifi.getProperties());
       debug("wifi connection properties: ",wifi.getConnectionProperties());
       debug("ethernet properties: ",ethernet.getProperties());
