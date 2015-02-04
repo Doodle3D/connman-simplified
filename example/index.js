@@ -134,24 +134,30 @@ process.stdin.on('keypress', function (ch, key) {
       logNetworksOnChange = !logNetworksOnChange;
       debug("logNetworksOnChange: ",logNetworksOnChange);
       break;
+    case '-':
+      wifi.forgetNetwork(function(err) {
+        if (err) debug('forgetNetwork err: ',err);
+      });
+      break;
     case '?':
       debug(getHelpText());
       break;
   }
-  if(key === undefined) {
+  if (key === undefined) {
     // join or forget one of the target networks using number keys
     var joinTargetIndex = parseInt(ch);
-    if(!isNaN(joinTargetIndex)) { // number key? 
+    if (!isNaN(joinTargetIndex)) { // number key?
       var network = targetNetworks[joinTargetIndex];
       debug('join network '+joinTargetIndex+': ',network);
-      wifi.join.apply(wifi,network); 
+      wifi.join.apply(wifi,network);
     }
     var forgetTargetIndex = ' !@#$%^&*('.indexOf(ch);
-    if(forgetTargetIndex !== -1) {
-      var network = targetNetworks[forgetTargetIndex];
-      debug('forget network '+forgetTargetIndex+': ',network);
+    if (forgetTargetIndex !== -1) {
+      var network = targetNetworks[forgetTargetIndex] || '';
+      debug('forget network ' + forgetTargetIndex + ': ',network);
+      debug(network[0]);
       wifi.forgetNetwork(network[0],function(err) {
-        if(err) debug("forgetNetwork err: ",err);
+        if (err) debug('forgetNetwork err: ',err);
       });
     }
   }
@@ -180,7 +186,8 @@ function retrieveEnvVars() {
 function getHelpText() {
   var help = '\nHelp: ';
   help += '\n f: Join a favorite network';
-  help += '\n d: Disconnect from current';
+  help += '\n d: Disconnect from current network';
+  help += '\n -: Forget current network';
   help += '\n o: Open hotspot';
   help += '\n x: Close hotspot';
   help += '\n s: Scan for networks';
