@@ -106,6 +106,29 @@ process.stdin.on('keypress', function (ch, key) {
     case 'x':
       wifi.closeHotspot();
       break;
+    case 'z':
+//      wifi.setProperty('tetheringIdentifier', 'ASDFGHJKL');
+//      wifi.setProperty('tetheringPassphrase', 'qwertyuio');
+//      setInterval(function() {
+//        wifi.openHotspot();
+//        wifi.openHotspot();
+//        wifi.closeHotspot();
+//        wifi.closeHotspot();
+//        wifi.openHotspot();
+//        wifi.openHotspot();
+//        wifi.closeHotspot();
+//        wifi.closeHotspot();
+//      },100);
+//      setInterval(function() {
+//        wifi.openHotspot();
+//        //wifi.closeHotspot();
+//      },50);
+      
+      for(var i=0;i<500;i++) {
+        wifi.openHotspot();
+        wifi.closeHotspot();
+      }
+      break;
     case 's':
 			if(key.shift) wifi.scan(true); // switchTether
 			else wifi.scan();
