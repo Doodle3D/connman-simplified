@@ -67,11 +67,12 @@ async.series([
         debug("WiFi ssid change: ",value);
       });
       
-      if(properties.connected) return next(); // already connected? 
-      wifi.joinFavorite(function(err) {
-        if(err) wifi.openHotspot(null,null,next);
-        else next();
-      });
+//      if(properties.connected) return next(); // already connected? 
+//      wifi.joinFavorite(function(err) {
+//        if(err) wifi.openHotspot(null,null,next);
+//        else next();
+//      });
+      next();
     });
   }
 ],function(err) {
