@@ -47,6 +47,9 @@ async.series([
       ethernet.on('state',function(value) {
         debug("Ethernet state: ",value);
       });
+      ethernet.on('ipaddress',function(value) {
+        debug("Ethernet ipaddress change: ",value);
+      });
     });
     next();
   },
@@ -65,6 +68,9 @@ async.series([
       }); 
       wifi.on('ssid',function(value) {
         debug("WiFi ssid change: ",value);
+      });
+      wifi.on('ipaddress',function(value) {
+        debug("WiFi ipaddress change: ",value);
       });
       
       if(properties.connected) return next(); // already connected? 
