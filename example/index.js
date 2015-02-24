@@ -116,7 +116,12 @@ process.stdin.on('keypress', function (ch, key) {
 			else wifi.scan();
       break;
     case 'g':
-			if(key.shift) {
+      if (key.ctrl) {
+        wifi.getNetworksForceFresh(function(err,list) {
+          if(err) return debug("[ERROR] get networks cache: ",err);
+          debug("found fresh networks: ",wifi.getServicesString(list));
+        });
+			} else if(key.shift) {
 				wifi.getNetworksCache(function(err,list) {
 					if(err) return debug("[ERROR] get networks cache: ",err);
 					debug("found cached networks: ",wifi.getServicesString(list));
