@@ -47,6 +47,9 @@ async.series([
       ethernet.on('state',function(value) {
         debug("Ethernet state: ",value);
       });
+      ethernet.on('ipaddress',function(value) {
+        debug("Ethernet ipaddress change: ",value);
+      });
     });
     next();
   },
@@ -65,6 +68,9 @@ async.series([
       }); 
       wifi.on('ssid',function(value) {
         debug("WiFi ssid change: ",value);
+      });
+      wifi.on('ipaddress',function(value) {
+        debug("WiFi ipaddress change: ",value);
       });
       
 //      if(properties.connected) return next(); // already connected? 
@@ -134,7 +140,12 @@ process.stdin.on('keypress', function (ch, key) {
 			else wifi.scan();
       break;
     case 'g':
-			if(key.shift) {
+      if (key.ctrl) {
+        wifi.getNetworksForceFresh(function(err,list) {
+          if(err) return debug("[ERROR] get networks cache: ",err);
+          debug("found fresh networks: ",wifi.getServicesString(list));
+        });
+			} else if(key.shift) {
 				wifi.getNetworksCache(function(err,list) {
 					if(err) return debug("[ERROR] get networks cache: ",err);
 					debug("found cached networks: ",wifi.getServicesString(list));
