@@ -107,10 +107,14 @@ process.stdin.on('keypress', function (ch, key) {
     case 'o':
       if(key.shift) wifi.openHotspot("myHotspot","123",debug); // invalid passphrase
       else if(key.ctrl) wifi.openHotspot("myhotspot","myPassphrase");
-      else wifi.openHotspot();
+      else wifi.openHotspot(function(err) {
+        if (err) debug(err);
+      });
       break;
     case 'x':
-      wifi.closeHotspot();
+      wifi.closeHotspot(function(err) {
+        if (err) debug(err);
+      });
       break;
     case 'z':
 //      wifi.setProperty('tetheringIdentifier', 'ASDFGHJKL');
