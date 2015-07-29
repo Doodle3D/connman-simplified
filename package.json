@@ -21,7 +21,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "connman-api": "git+https://github.com/pcarranzav/connman-api.git#5bae8c4d15066ac36a57069c2003901e5dee398d",
+    "connman-api": "^0.3.3",
     "debug": "^2.1.0",
     "keypress": "^0.2.1",
     "ms": "^0.7.0"
