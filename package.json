@@ -1,6 +1,6 @@
 {
   "name": "connman-simplified",
-  "version": "0.0.2",
+  "version": "0.1.2",
   "description": "Node.js package that simplifies Connman (Opensource connection manager) usage. Uses connman-api.",
   "keywords": [
     "internet",
