@@ -10,6 +10,10 @@ Connman: http://www.connman.net/
 - Includes network cache system (for when scanning is impossible in hotspot mode).
 - Uses regular Node.js naming conventions. 
 
+Unmaintained
+------------
+The project we used this in stopped, so we're looking for new maintainers.
+
 Examples
 ------------
 Try to connect to favorite wifi network, if fails become hotspot. Log the wifi state changes.
